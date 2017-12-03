@@ -1,0 +1,30 @@
+{
+  "name": "webgl_shadow_mapping",
+  "version": "1.0.0",
+  "main": "main.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "webpack-dev-server --config webpack.dev.js",
+    "build": "webpack --config webpack.prod.js"
+  },
+  "devDependencies": {
+    "clean-webpack-plugin": "^0.1.17",
+    "coffee-loader": "^0.8.0",
+    "coffeescript": "^2.0.1",
+    "copy-webpack-plugin": "^4.2.0",
+    "glslify-loader": "^1.0.2",
+    "html-webpack-plugin": "^2.30.1",
+    "raw-loader": "^0.5.1",
+    "shader-loader": "^1.3.1",
+    "uglifyjs-webpack-plugin": "^1.0.1",
+    "webpack": "^3.8.1",
+    "webpack-dev-server": "^2.9.3",
+    "webpack-merge": "^4.1.0"
+  },
+  "dependencies": {
+    "canvas-fit": "^1.5.0",
+    "gl-matrix": "^2.4.0",
+    "minimal-gltf-loader": "https://github.com/shrekshao/minimal-gltf-loader.git#master",
+    "twgl.js": "^4.0.0"
+  }
+}
