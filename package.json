@@ -24,6 +24,7 @@
   "dependencies": {
     "canvas-fit": "^1.5.0",
     "gl-matrix": "^2.4.0",
+    "keyboardjs": "^2.4.1",
     "minimal-gltf-loader": "https://github.com/shrekshao/minimal-gltf-loader.git#master",
     "twgl.js": "^4.0.0"
   }

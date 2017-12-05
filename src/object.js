@@ -1,10 +1,5 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
-import {
-    vec3,
-    quat,
-    glMatrix
-} from "gl-matrix"
 //import { vec3 } from "gl-matrix"
 const m4 = twgl.m4
 const v3 = twgl.v3
@@ -28,53 +23,6 @@ class BaseObject {
 
         return mat
     }
-    /*
-    get forward() {
-        // TODO
-        var forward = m4.identity()
-
-        m4.multiply(forward, m4.translation(this.position), forward)
-        m4.multiply(forward, m4.rotationZ(this.rotation[2]), forward)
-        m4.multiply(forward, m4.rotationY(this.rotation[1]), forward)
-        m4.multiply(forward, m4.rotationX(this.rotation[0]), forward)
-
-        forward = m4.transformDirection(forward, [0,1,0])
-        return forward
-    }
-
-    lookAt(target) {
-        var rot1 = quat.create()
-        var rot2 = quat.create()
-        var dir = vec3.create()
-        var new_up = vec3.create()
-        var origin_ori = quat.create()
-        var tar_ori = quat.create()
-        var slerp_ori = quat.create()
-
-        quat.fromEuler(
-            origin_ori,
-            this.rotation[0] * 180 /  Math.PI,
-            this.rotation[1] * 180 /  Math.PI,
-            this.rotation[2] * 180 /  Math.PI
-        )
-
-        vec3.subtract(dir, target, this.position)
-        vec3.normalize(dir, dir)
-
-        quat.rotationTo(rot1, [0, 0, 1], dir)
-        vec3.multiply(new_up, rot1, [0, 1, 0])
-
-        quat.rotationTo(rot2, new_up, [0, 1, 0])
-        quat.multiply(tar_ori, rot2, rot1)
-
-        quat.slerp(slerp_ori, origin_ori, tar_ori, 1)
-        
-        this.rotation[0] = quat.getAxisAngle([1, 0, 0], slerp_ori)
-        this.rotation[1] = quat.getAxisAngle([0, 1, 0], slerp_ori)
-        this.rotation[2] = quat.getAxisAngle([0, 0, 1], slerp_ori)
-    }
-
-    */
 }
 
 export class ModelObject extends BaseObject {
@@ -88,6 +36,13 @@ export class ModelObject extends BaseObject {
             indices: [],
         }
         this.textures = []
+        this.material = {
+            diffuse: [1, 1, 1, 1],
+            ambient: [0.1, 0.1, 0.1, 1],
+            specular: [1, 1, 1, 1],
+            shininess: 50,
+        }
+        //this.shaderProgramInfo = {}
         /*
         glTFLoader.loadGLTF( file_path, ( glTF ) =>
             this.setUpGLTF( glTF )
@@ -144,5 +99,13 @@ export class CameraObject extends BaseObject {
 
     get fov() {
         return this.fov_angle * Math.PI / 180
+    }
+
+    get forward() {
+        var x = this.position[0] + Math.cos(this.rotation[0]) * Math.cos(this.rotation[1])
+        var y = this.position[1] + Math.sin(this.rotation[0])
+        var z = this.position[2] - Math.cos(this.rotation[0]) * Math.sin(this.rotation[1])
+
+        return v3.create(x, y, z)
     }
 }
