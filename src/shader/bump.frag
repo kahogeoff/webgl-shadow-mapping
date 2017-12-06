@@ -85,18 +85,18 @@ void main()
 	*/
 	//outColor.xyz = light_tan_dir;
 	
-	float visibility = 1.0;
-	if ( texture( depth_texture, v_shadowcoord.xy ).r < v_shadowcoord.z){
+	float visibility = texture( depth_texture, v_shadowcoord.xy ).r;
+	/*
+	if ( texture( depth_texture, v_shadowcoord.xy ).r - v_shadowcoord.z <= 0.2){
 		visibility = 0.5;
 	}
+	*/
 	
 
-	outColor.xyz = vec3(1.0, 1.0, 1.0) * texture( depth_texture, v_shadowcoord.xy ).r - v_shadowcoord.z;
-	/*
+	outColor =
 		ambient_color * diffuse_color *  texColor +
 		light_color * light_power * visibility * (
 			+ diffuse_color * texColor * lambertian
 			+ specular_color * specular
 		) / (v_light_dist * v_light_dist);
-	*/
 }
