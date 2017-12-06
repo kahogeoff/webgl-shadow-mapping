@@ -9,6 +9,7 @@ const glTFLoader = new MinimalGLTFLoader.glTFLoader()
 class BaseObject {
     constructor() {
         this.name = "no_name"
+        this.scale = v3.create(1, 1, 1)
         this.position = v3.create()
         this.rotation = v3.create()
     }
@@ -16,6 +17,7 @@ class BaseObject {
     get transformMatrix() {
         var mat = m4.identity()
 
+        m4.multiply(mat, m4.scaling(this.scale), mat)
         m4.multiply(mat, m4.translation(this.position), mat)
         m4.multiply(mat, m4.rotationZ(this.rotation[2]), mat)
         m4.multiply(mat, m4.rotationY(this.rotation[1]), mat)

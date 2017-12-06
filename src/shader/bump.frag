@@ -7,6 +7,7 @@ in vec3 v_normal;
 in vec2 v_texcoord;
 //out vec3 tangent;
 //out vec3 bitangent;
+in vec4 v_shadowcoord;
 
 in vec3 v_light_cam_dir;
 in vec3 v_eye_cam_dir;
@@ -17,13 +18,11 @@ in vec3 v_eye_cam_dir;
 in float v_light_dist;
 
 uniform sampler2D texture_0;
+uniform sampler2D depth_texture;
 //uniform sampler2D normal_map;
 
 uniform bool bump_mode;
 
-//uniform vec4 diffuse_color;
-//uniform vec4 ambient_color;
-//uniform vec4 specular_color;
 uniform vec4 light_color;
 uniform float light_power;
 
@@ -85,10 +84,19 @@ void main()
 	}
 	*/
 	//outColor.xyz = light_tan_dir;
-	outColor = 
+	
+	float visibility = 1.0;
+	if ( texture( depth_texture, v_shadowcoord.xy ).r < v_shadowcoord.z){
+		visibility = 0.5;
+	}
+	
+
+	outColor.xyz = vec3(1.0, 1.0, 1.0) * texture( depth_texture, v_shadowcoord.xy ).r - v_shadowcoord.z;
+	/*
 		ambient_color * diffuse_color *  texColor +
-		light_color * light_power * (
+		light_color * light_power * visibility * (
 			+ diffuse_color * texColor * lambertian
 			+ specular_color * specular
 		) / (v_light_dist * v_light_dist);
+	*/
 }

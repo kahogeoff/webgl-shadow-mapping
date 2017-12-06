@@ -5,15 +5,18 @@ in vec3 normal;
 in vec2 texcoord;
 
 uniform mat4 M;
-//uniform mat4 N;
+uniform mat4 N;
 uniform mat4 V;
 uniform mat4 P;
 uniform vec3 light_pos;
 //uniform vec4 light_color;
 
+uniform mat4 depthBiasMVP;
+
 out vec4 v_position;
 out vec3 v_normal;
 out vec2 v_texcoord;
+out vec4 v_shadowcoord;
 //out vec3 tangent;
 //out vec3 bitangent;
 
@@ -28,12 +31,13 @@ out float v_light_dist;
 void main()
 {
 	mat4 MV = V * M;
-	mat4 N = transpose(inverse(MV));
-	gl_Position = P * MV * position;
+	//mat4 N = transpose(inverse(MV));
+	gl_Position = P * MV * (position);
 
 	v_position = MV * position;
 	v_normal = (N * vec4(normal, 0.0)).xyz;
 	v_texcoord = texcoord;
+	v_shadowcoord = depthBiasMVP * position;
 	//-v_tangent = mat3(MV) * vertex_tangent;
 	//v_bitangent = mat3(MV) * vertex_bitangent;
 
