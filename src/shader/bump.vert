@@ -20,13 +20,14 @@ out vec4 v_shadowcoord;
 //out vec3 tangent;
 //out vec3 bitangent;
 
-out vec3 v_light_cam_dir;
+out vec3 v_lightToEye_cam_dir;
 out vec3 v_eye_cam_dir;
 
 //out vec3 light_tan_dir;
 //out vec3 eye_tan_dir;
 
 out float v_light_dist;
+out vec3 v_lightToVertex_dir;
 
 void main()
 {
@@ -53,9 +54,11 @@ void main()
 	//eye_tan_dir = TBN * eye_cam_dir;
 	
 	vec3 light_cam_pos = (V * vec4(light_pos, 1.0)).xyz;
-	v_light_cam_dir =  light_cam_pos + v_eye_cam_dir;
+	v_lightToEye_cam_dir =  light_cam_pos + v_eye_cam_dir;
 	//light_tan_dir = TBN * light_cam_dir;
 
 	vec3 world_pos = (M * position).xyz;
 	v_light_dist = distance(light_pos, world_pos);
+
+	v_lightToVertex_dir = light_pos - world_pos;
 }

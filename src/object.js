@@ -25,6 +25,14 @@ class BaseObject {
 
         return mat
     }
+
+    translate(value/*: number[3]*/){
+        v3.add(this.position, value, this.position)
+    }
+
+    rotate(value/*: number[3]*/){
+        v3.add(this.rotation, value, this.rotation)
+    }
 }
 
 export class ModelObject extends BaseObject {
@@ -44,6 +52,10 @@ export class ModelObject extends BaseObject {
             specular: [1, 1, 1, 1],
             shininess: 50,
         }
+        this.bufferInfo = undefined
+        this.childern/*: ModelObject[]*/ = []
+        this.cast_shadow = true
+        this.recive_shadow = true
         //this.shaderProgramInfo = {}
         /*
         glTFLoader.loadGLTF( file_path, ( glTF ) =>
@@ -51,7 +63,6 @@ export class ModelObject extends BaseObject {
         )
         */
     }
-
     /*
     setUpGLTF( glTF ){
         var i = 0

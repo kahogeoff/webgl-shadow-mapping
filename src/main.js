@@ -1,14 +1,16 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
 import {
+    glMatrix
+} from "gl-matrix"
+
+import * as keyboardjs from "keyboardjs"
+
+import {
     ModelObject,
     PointLightObject,
     CameraObject
 } from "./object"
-import {
-    vec3,
-    glMatrix
-} from "gl-matrix"
 const m4 = twgl.m4
 const v3 = twgl.v3
 
@@ -61,6 +63,59 @@ box.textures.push([
     255, 255, 255, 255,
 ])
 
+let obj2 = new ModelObject()
+obj2.name = "Object2"
+obj2.position = v3.create(3, 3, 3)
+obj2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
+obj2.textures.push([
+    16, 220, 220, 255,
+    220, 220, 16, 255,
+    220, 16, 220, 255
+])
+
+let floor = new ModelObject()
+floor.name = "Floor"
+floor.cast_shadow = false
+floor.textures.push([
+    24, 24, 255, 255,
+])
+
+let g_wall = new ModelObject()
+g_wall.name = "Green Wall"
+g_wall.cast_shadow = false
+g_wall.position = v3.create(0, 5, 5)
+g_wall.rotation = v3.create(glMatrix.toRadian(-90), 0, 0)
+g_wall.textures.push([
+    24, 180, 24, 255,
+])
+
+let r_wall = new ModelObject()
+r_wall.name = "Red Wall"
+r_wall.cast_shadow = false
+r_wall.position = v3.create(5, 5, 0)
+r_wall.rotation = v3.create(0, 0, glMatrix.toRadian(90))
+r_wall.textures.push([
+    180, 24, 24, 255,
+])
+
+let g_wall_2 = new ModelObject()
+g_wall_2.name = "Green Wall 2"
+g_wall_2.cast_shadow = false
+g_wall_2.position = v3.create(0, 5, -5)
+g_wall_2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
+g_wall_2.textures.push([
+    24, 180, 24, 255,
+])
+
+let r_wall_2 = new ModelObject()
+r_wall_2.name = "Red Wall 2"
+r_wall_2.cast_shadow = false
+r_wall_2.position = v3.create(-5, 5, 0)
+r_wall_2.rotation = v3.create(0, 0, glMatrix.toRadian(-90))
+r_wall_2.textures.push([
+    180, 24, 24, 255,
+])
+
 // Set up a point light
 let point_light = new PointLightObject()
 point_light.position = v3.create(1, 3, -2)
@@ -76,13 +131,14 @@ camera.rotation = v3.create(-0.4, -1.2, 0)
 camera.fov_angle = 60
 camera.zFar = 300
 
+let object_list = []
+
 let tex = {}
 let depth_tex = {}
-let uniforms = {}
+let depth_cube_tex = []
+//let uniforms = {}
 let bump_uniforms = {}
-let depth_uniforms = {
-    depthMVP: m4.identity()
-}
+let depth_uniforms = {}
 let light_hint_uniforms = {}
 //let depth_data = {}
 
@@ -158,23 +214,6 @@ function init() {
     lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
     //console.log(bufferInfo)
 
-    tex = twgl.createTexture(gl, {
-        min: gl.NEAREST,
-        mag: gl.NEAREST,
-        src: box.textures[0],
-    })
-
-    uniforms = {
-        u_lightWorldPos: point_light.position,
-        u_lightColor: point_light.color,
-        u_lightPower: point_light.power,
-        u_ambient: [0.01, 0.01, 0.01, 1],
-        u_specular: [1, 1, 1, 1],
-        u_shininess: 50,
-        u_specularFactor: 1,
-        u_diffuse: tex,
-    }
-
     bump_uniforms = {
         shininess: 50,
         M: m4.identity(),
@@ -184,9 +223,10 @@ function init() {
         light_pos: point_light.position,
         light_color: point_light.color,
         light_power: point_light.power,
-        texture_0: tex,
     }
-
+    depth_uniforms = {
+        depthMVP: m4.identity()
+    }
     light_hint_uniforms = {
         uniform_MVP: m4.identity()
     }
@@ -206,9 +246,43 @@ function init() {
     })
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_tex, 0)
 
+    /*
+    depth_cube_tex = twgl.createTexture(gl, {
+        target: gl.TEXTURE_CUBE_MAP,
+        width: shadowDepthTextureSize,
+        height: shadowDepthTextureSize,
+        minMag: gl.NEAREST,
+        internalFormat: gl.DEPTH_COMPONENT16,
+        format: gl.DEPTH_COMPONENT,
+        warp: gl.CLAMP_TO_EDGE
+    })
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X, depth_cube_tex, 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, depth_cube_tex, 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, depth_cube_tex, 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, depth_cube_tex, 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, depth_cube_tex, 0)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, depth_cube_tex, 0)
+    */
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE) {
         return false
     }
+
+    // Adding object
+    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
+    obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
+    floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    g_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    r_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    g_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+
+    object_list.push(box)
+    object_list.push(obj2)
+    object_list.push(floor)
+    object_list.push(r_wall)
+    object_list.push(g_wall)
+    object_list.push(r_wall_2)
+    object_list.push(g_wall_2)
 
     // Mouse test
     canvas.addEventListener("mousedown", (e) => {
@@ -230,6 +304,7 @@ function render(time) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer)
     gl.viewport(0, 0, shadowDepthTextureSize, shadowDepthTextureSize)
 
+    gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.CULL_FACE)
     gl.cullFace(gl.BACK)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -237,92 +312,54 @@ function render(time) {
     gl.useProgram(depthProgramInfo.program)
 
     let light_inv_dir = [
-        -point_light.position[0], 
-        -point_light.position[1], 
-        -point_light.position[2], ] //v3.subtract(point_light.position, box.position)
-    let depth_P = m4.ortho(-10, 10, -10, 10, -10, 20)
-    /*
-        let depth_P = m4.perspective(
-            glMatrix.toRadian(45),
-            1,
-            2,
-            50
-        )
-    */
+        point_light.position[0],
+        point_light.position[1],
+        point_light.position[2],
+    ] //v3.subtract(point_light.position, box.position)
 
+    let depth_M = m4.identity()
+    let depth_P = m4.ortho(-10, 10, -10, 10, -10, 20)
+    //let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
+    /*
+        let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
+    */
     let depth_V = m4.inverse(
         //m4.lookAt(point_light.position, v3.subtract(point_light.position, light_inv_dir), [0, 1, 0])
+        //m4.lookAt(light_inv_dir, [0, 0, 0], [0, 1, 0])
         m4.lookAt(light_inv_dir, [0, 0, 0], [0, 1, 0])
     )
+    let depth_MVP = m4.identity()
 
-    // BOX
-    world = box.transformMatrix
-    let depth_M = world
-    let depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
+    // Shadow pass (Directional light)
+    object_list.forEach(element => {
+        if (!element.cast_shadow) {
+            return
+        }
+        world = element.transformMatrix
+        depth_M = world
 
-    depth_uniforms.depthMVP = depth_MVP
-    bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
+        depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
 
-    twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-    twgl.setUniforms(depthProgramInfo, depth_uniforms)
-    gl.drawElements(gl.TRIANGLES, bufferInfo.numElements, gl.UNSIGNED_SHORT, 0)
+        depth_uniforms.depthMVP = depth_MVP
+        //depth_uniforms.depth_M = world
+        //depth_uniforms.lightPos = point_light.position
+        bufferInfo = element.bufferInfo
 
-    // OBJ 2
-    world = m4.translation([3, 3, 3])
-    m4.multiply(world, m4.rotationX(glMatrix.toRadian(90)), world)
+        twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
+        twgl.setUniforms(depthProgramInfo, depth_uniforms)
+        twgl.drawBufferInfo(gl, bufferInfo)
+    })
 
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    depth_uniforms.depthMVP = depth_MVP
-    bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
-    twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-    twgl.setUniforms(depthProgramInfo, depth_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-    /**/
-
-    // Floor and walls
-    world = m4.translation([0, 0, 0])
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    depth_uniforms.depthMVP = depth_MVP
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-    twgl.setUniforms(depthProgramInfo, depth_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
-    // Move the red wall
-    world = m4.translation([5, 5, 0])
-    m4.multiply(world, m4.rotationZ(glMatrix.toRadian(90)), world)
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    depth_uniforms.depthMVP = depth_MVP
-
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-    twgl.setUniforms(depthProgramInfo, depth_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
-    // Move the gree wall
-    world = m4.translation([0, 5, 5])
-    m4.multiply(world, m4.rotationX(glMatrix.toRadian(-90)), world)
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    depth_uniforms.depthMVP = depth_MVP
-
-    // Draw the green wall
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-    twgl.setUniforms(depthProgramInfo, depth_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
+    // Phong shader
+    //gl.disable(gl.POLYGON_OFFSET_FILL)
+    gl.enable(gl.POLYGON_OFFSET_FILL)
+    gl.polygonOffset(2.0, 500.0)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, canvas.width, canvas.height)
 
-    gl.enable(gl.DEPTH_TEST)
-    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.BACK)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    // Phong shader
     gl.useProgram(bumpProgramInfo.program)
 
     // Camera Settings
@@ -334,157 +371,35 @@ function render(time) {
     bump_uniforms.P = camera.projection
     bump_uniforms.light_pos = point_light.position
     bump_uniforms.depth_texture = depth_tex
+    //bump_uniforms.depth_cube_texture = depth_cube_tex
 
-    // Move the box
-    world = box.transformMatrix
-    /* Depth parameter
-        var lightDir = v3.subtract(point_light.position, box.position)
-        var dProjection = m4.ortho(-10, 10, -10, 10, -10, 20)
-        var dView = m4.lookAt(lightDir, [0, 0, 0], [0, 1, 0])
-        var dModel = m4.identity()
-        var depthMVP = m4.multiply(dProjection, m4.multiply(dView, dModel))
-    */
-    bump_uniforms.M = world
-    bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-    bump_uniforms.diffuse_color = box.material.diffuse
-    bump_uniforms.ambient_color = box.material.ambient
-    bump_uniforms.specular_color = box.material.specular
-    bump_uniforms.shininess = box.material.shininess
-    bump_uniforms.texture_0 = tex
+    // Scene render pass
+    object_list.forEach(element => {
+        world = element.transformMatrix
 
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
+        bump_uniforms.M = world
+        bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
+        bump_uniforms.diffuse_color = box.material.diffuse
+        bump_uniforms.ambient_color = box.material.ambient
+        bump_uniforms.specular_color = box.material.specular
+        bump_uniforms.shininess = box.material.shininess
+        bump_uniforms.texture_0 = twgl.createTexture(gl, {
+            min: gl.NEAREST,
+            mag: gl.NEAREST,
+            src: element.textures[0]
+        })
 
-    // Draw the box
-    bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
-    twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-    twgl.setUniforms(bumpProgramInfo, bump_uniforms)
-    gl.drawElements(gl.TRIANGLES, bufferInfo.numElements, gl.UNSIGNED_SHORT, 0)
+        depth_M = world
+        depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
+        bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
 
-    // Obj2
+        depth_uniforms.depthMVP = depth_MVP
+        bufferInfo = element.bufferInfo
 
-    world = m4.translation([3, 3, 3])
-    //m4.multiply(world, m4.rotationZ(glMatrix.toRadian(30)), world)
-    m4.multiply(world, m4.rotationX(glMatrix.toRadian(90)), world)
-    bump_uniforms.M = world
-    bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-    bump_uniforms.diffuse_color = box.material.diffuse
-    bump_uniforms.ambient_color = box.material.ambient
-    bump_uniforms.specular_color = box.material.specular
-    bump_uniforms.shininess = box.material.shininess
-    bump_uniforms.texture_0 = twgl.createTexture(gl, {
-        min: gl.NEAREST,
-        mag: gl.NEAREST,
-        src: [
-            16, 220, 220, 255,
-            220, 220, 16, 255,
-            220, 16, 220, 255
-        ],
+        twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
+        twgl.setUniforms(bumpProgramInfo, bump_uniforms)
+        twgl.drawBufferInfo(gl, bufferInfo)
     })
-
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-    //bump_uniforms.shadowmap = frameBufferInfo.texture
-    //bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-
-    // Draw the Obj2
-    bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
-    twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-    twgl.setUniforms(bumpProgramInfo, bump_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
-    // Move the floor
-    world = m4.translation([0, 0, 0])
-    bump_uniforms.M = world
-    bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-    bump_uniforms.diffuse_color = box.material.diffuse
-    bump_uniforms.ambient_color = box.material.ambient
-    bump_uniforms.specular_color = box.material.specular
-    bump_uniforms.shininess = box.material.shininess
-    bump_uniforms.texture_0 = twgl.createTexture(gl, {
-        min: gl.NEAREST,
-        mag: gl.NEAREST,
-        src: [
-            24,
-            24,
-            180,
-            255
-        ],
-    })
-
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-    //bump_uniforms.shadowmap = frameBufferInfo.texture
-    //bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-
-    // Draw the floor
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-    twgl.setUniforms(bumpProgramInfo, bump_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
-    // Move the red wall
-    world = m4.translation([5, 5, 0])
-    m4.multiply(world, m4.rotationZ(glMatrix.toRadian(90)), world)
-    bump_uniforms.M = world
-    bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-    bump_uniforms.diffuse_color = box.material.diffuse
-    bump_uniforms.ambient_color = box.material.ambient
-    bump_uniforms.specular_color = box.material.specular
-    bump_uniforms.shininess = box.material.shininess
-    bump_uniforms.texture_0 = twgl.createTexture(gl, {
-        min: gl.NEAREST,
-        mag: gl.NEAREST,
-        src: [
-            180,
-            24,
-            24,
-            255
-        ],
-    })
-
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-
-    // Draw the red wall
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-    twgl.setUniforms(bumpProgramInfo, bump_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
-
-    // Move the gree wall
-    world = m4.translation([0, 5, 5])
-    m4.multiply(world, m4.rotationX(glMatrix.toRadian(-90)), world)
-    bump_uniforms.M = world
-    bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-    bump_uniforms.diffuse_color = box.material.diffuse
-    bump_uniforms.ambient_color = box.material.ambient
-    bump_uniforms.specular_color = box.material.specular
-    bump_uniforms.shininess = box.material.shininess
-    bump_uniforms.texture_0 = twgl.createTexture(gl, {
-        min: gl.NEAREST,
-        mag: gl.NEAREST,
-        src: [
-            24,
-            180,
-            24,
-            255
-        ],
-    })
-
-    depth_M = world
-    depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-    bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
-
-    // Draw the green wall
-    bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-    twgl.setUniforms(bumpProgramInfo, bump_uniforms)
-    twgl.drawBufferInfo(gl, bufferInfo)
 
     // Draw the light hint
     world = m4.translation(point_light.position)
@@ -498,7 +413,13 @@ function render(time) {
     twgl.drawBufferInfo(gl, bufferInfo)
 
     gl.useProgram(null)
+
+    update(delta_time)
     requestAnimationFrame(render)
+}
+
+function update(delta_time) {
+    obj2.rotate([delta_time, 0, 0])
 }
 
 init()
