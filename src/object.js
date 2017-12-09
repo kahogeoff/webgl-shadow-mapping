@@ -50,7 +50,7 @@ export class ModelObject extends BaseObject {
             diffuse: [1, 1, 1, 1],
             ambient: [0.1, 0.1, 0.1, 1],
             specular: [1, 1, 1, 1],
-            shininess: 50,
+            shininess: 8,
         }
         this.bufferInfo = undefined
         this.childern/*: ModelObject[]*/ = []
@@ -75,12 +75,42 @@ export class ModelObject extends BaseObject {
     */
 }
 
-export class PointLightObject extends BaseObject {
+export class BasicLightObject extends BaseObject {
+    constructor() {
+        super()
+        this.name = "BasicLight"
+        this.color = [1, 1, 1, 1]
+        this.power = 50.0
+        //this.ambient = [0, 0, 0, 1]
+
+    }
+}
+
+export class DirectionalLightObject extends BasicLightObject {
+    constructor() {
+        super()
+        this.name = "DirectionalLight"
+        //this.direction = [0, -1, 0]
+        //this.ambient = [0, 0, 0, 1]
+
+    }
+
+    get direction() {
+        var x = Math.cos(this.rotation[0]) * Math.cos(this.rotation[1])
+        var y = Math.sin(this.rotation[0])
+        var z = - Math.cos(this.rotation[0]) * Math.sin(this.rotation[1])
+
+        return v3.create(x, y, z)
+    }
+}
+
+export class PointLightObject extends BasicLightObject {
     constructor() {
         super()
         this.name = "PointLight"
-        this.color = [1, 1, 1, 1]
-        this.power = 50.0
+        this.constant = 1.0
+        this.linear = 1.0
+        this.exp = 1.0
         //this.ambient = [0, 0, 0, 1]
 
     }

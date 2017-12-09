@@ -9,6 +9,7 @@ import * as keyboardjs from "keyboardjs"
 import {
     ModelObject,
     PointLightObject,
+    DirectionalLightObject,
     CameraObject
 } from "./object"
 const m4 = twgl.m4
@@ -116,12 +117,21 @@ r_wall_2.textures.push([
     180, 24, 24, 255,
 ])
 
+// Set up a directional light
+let directional_light = new DirectionalLightObject()
+//directional_light.position = v3.create(1, 3, -2)
+directional_light.name = "MyLittleDirectionalLight"
+directional_light.color = [0.8, 0.8, 0.8, 1]
+directional_light.power = 1
+
 // Set up a point light
 let point_light = new PointLightObject()
-point_light.position = v3.create(1, 3, -2)
+//directional_light.position = v3.create(1, 3, -2)
 point_light.name = "MyLittlePointLight"
+point_light.position = v3.create(1, 3, -2)
 point_light.color = [0.8, 0.8, 0.8, 1]
-point_light.power = 15
+point_light.power = 2
+point_light.exp = 5
 
 // Set up a camera
 let camera = new CameraObject()
@@ -133,14 +143,32 @@ camera.zFar = 300
 
 let object_list = []
 
-let tex = {}
 let depth_tex = {}
 let depth_cube_tex = []
-//let uniforms = {}
-let bump_uniforms = {}
+let bump_uniforms = {
+    M: m4.identity(),
+    N: m4.identity(),
+    V: m4.identity(),
+    P: m4.identity(),
+    //light_color: directional_light.color,
+    //light_power: directional_light.power,
+}
+let dirLight_uniforms = {
+    dirLight_dir: v3.create(),
+    dirLight_color: [1, 1, 1, 1],
+    dirLight_power: 1,
+}
+let pointLight_uniforms = {
+    pointLights_num: 1,
+    pointLights_color: [],
+    pointLights_position: [],
+    pointLights_power: [],
+    pointLights_constant: [],
+    pointLights_linear: [],
+    pointLights_exp: [],
+}
 let depth_uniforms = {}
 let light_hint_uniforms = {}
-//let depth_data = {}
 
 let previous_time = 0
 let delta_time = 0
@@ -214,16 +242,22 @@ function init() {
     lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
     //console.log(bufferInfo)
 
-    bump_uniforms = {
-        shininess: 50,
-        M: m4.identity(),
-        N: m4.identity(),
-        V: m4.identity(),
-        P: m4.identity(),
-        light_pos: point_light.position,
-        light_color: point_light.color,
-        light_power: point_light.power,
+    dirLight_uniforms = {
+        dirLight_dir: directional_light.direction,
+        dirLight_color: directional_light.color,
+        dirLight_power: directional_light.power,
     }
+
+    pointLight_uniforms = {
+        pointLights_num: 1,
+        pointLights_color: [],
+        pointLights_position: [],
+        pointLights_power: [],
+        pointLights_constant: [],
+        pointLights_linear: [],
+        pointLights_exp: [],
+    }
+
     depth_uniforms = {
         depthMVP: m4.identity()
     }
@@ -247,42 +281,25 @@ function init() {
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_tex, 0)
 
     /*
-    depth_cube_tex = twgl.createTexture(gl, {
-        target: gl.TEXTURE_CUBE_MAP,
-        width: shadowDepthTextureSize,
-        height: shadowDepthTextureSize,
-        minMag: gl.NEAREST,
-        internalFormat: gl.DEPTH_COMPONENT16,
-        format: gl.DEPTH_COMPONENT,
-        warp: gl.CLAMP_TO_EDGE
-    })
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X, depth_cube_tex, 0)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, depth_cube_tex, 0)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, depth_cube_tex, 0)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, depth_cube_tex, 0)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, depth_cube_tex, 0)
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, depth_cube_tex, 0)
+        depth_cube_tex = twgl.createTexture(gl, {
+            target: gl.TEXTURE_CUBE_MAP,
+            width: shadowDepthTextureSize,
+            height: shadowDepthTextureSize,
+            minMag: gl.NEAREST,
+            internalFormat: gl.DEPTH_COMPONENT16,
+            format: gl.DEPTH_COMPONENT,
+            warp: gl.CLAMP_TO_EDGE
+        })
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X, depth_cube_tex, 0)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, depth_cube_tex, 0)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, depth_cube_tex, 0)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, depth_cube_tex, 0)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, depth_cube_tex, 0)
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, depth_cube_tex, 0)
     */
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE) {
         return false
     }
-
-    // Adding object
-    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
-    obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
-    floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    g_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    r_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-    g_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
-
-    object_list.push(box)
-    object_list.push(obj2)
-    object_list.push(floor)
-    object_list.push(r_wall)
-    object_list.push(g_wall)
-    object_list.push(r_wall_2)
-    object_list.push(g_wall_2)
 
     // Mouse test
     canvas.addEventListener("mousedown", (e) => {
@@ -311,21 +328,41 @@ function render(time) {
 
     gl.useProgram(depthProgramInfo.program)
 
+    dirLight_uniforms = {
+        dirLight_dir: directional_light.direction,
+        dirLight_color: directional_light.color,
+        dirLight_power: directional_light.power,
+    }
+    pointLight_uniforms = {
+        pointLights_num: 1,
+        pointLights_color: [],
+        pointLights_position: [],
+        pointLights_power: [],
+        pointLights_constant: [],
+        pointLights_linear: [],
+        pointLights_exp: [],
+    }
+
+    pointLight_uniforms.pointLights_color =
+        pointLight_uniforms.pointLights_color.concat(point_light.color)
+    pointLight_uniforms.pointLights_position =
+        pointLight_uniforms.pointLights_position.concat(Array.from(point_light.position))
+    pointLight_uniforms.pointLights_power.push(point_light.power)
+    pointLight_uniforms.pointLights_linear.push(point_light.linear)
+    pointLight_uniforms.pointLights_exp.push(point_light.exp)
+    pointLight_uniforms.pointLights_constant.push(point_light.constant)
+
     let light_inv_dir = [
-        point_light.position[0],
-        point_light.position[1],
-        point_light.position[2],
-    ] //v3.subtract(point_light.position, box.position)
+        -directional_light.direction[0], 
+        -directional_light.direction[1],
+        -directional_light.direction[2],
+    ]
 
     let depth_M = m4.identity()
     let depth_P = m4.ortho(-10, 10, -10, 10, -10, 20)
     //let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
-    /*
-        let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
-    */
     let depth_V = m4.inverse(
         //m4.lookAt(point_light.position, v3.subtract(point_light.position, light_inv_dir), [0, 1, 0])
-        //m4.lookAt(light_inv_dir, [0, 0, 0], [0, 1, 0])
         m4.lookAt(light_inv_dir, [0, 0, 0], [0, 1, 0])
     )
     let depth_MVP = m4.identity()
@@ -343,8 +380,8 @@ function render(time) {
         depth_uniforms.depthMVP = depth_MVP
         //depth_uniforms.depth_M = world
         //depth_uniforms.lightPos = point_light.position
-        bufferInfo = element.bufferInfo
 
+        bufferInfo = element.bufferInfo
         twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
         twgl.setUniforms(depthProgramInfo, depth_uniforms)
         twgl.drawBufferInfo(gl, bufferInfo)
@@ -353,14 +390,15 @@ function render(time) {
     // Phong shader
     //gl.disable(gl.POLYGON_OFFSET_FILL)
     gl.enable(gl.POLYGON_OFFSET_FILL)
-    gl.polygonOffset(2.0, 500.0)
+    gl.polygonOffset(1.0, 2.0)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, canvas.width, canvas.height)
 
     gl.cullFace(gl.BACK)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    gl.useProgram(bumpProgramInfo.program)
+    gl.useProgram(programInfo.program)
+    //gl.useProgram(bumpProgramInfo.program)
 
     // Camera Settings
     const camera_mat = m4.lookAt(camera.position, camera.forward, camera.up)
@@ -369,7 +407,7 @@ function render(time) {
 
     bump_uniforms.V = view
     bump_uniforms.P = camera.projection
-    bump_uniforms.light_pos = point_light.position
+    bump_uniforms.cam_pos = camera.position
     bump_uniforms.depth_texture = depth_tex
     //bump_uniforms.depth_cube_texture = depth_cube_tex
 
@@ -379,25 +417,22 @@ function render(time) {
 
         bump_uniforms.M = world
         bump_uniforms.N = m4.transpose(m4.inverse(m4.multiply(view, world)))
-        bump_uniforms.diffuse_color = box.material.diffuse
-        bump_uniforms.ambient_color = box.material.ambient
-        bump_uniforms.specular_color = box.material.specular
-        bump_uniforms.shininess = box.material.shininess
+        bump_uniforms.diffuse_color = element.material.diffuse
+        bump_uniforms.ambient_color = element.material.ambient
+        bump_uniforms.specular_color = element.material.specular
+        bump_uniforms.shininess = element.material.shininess
         bump_uniforms.texture_0 = twgl.createTexture(gl, {
             min: gl.NEAREST,
             mag: gl.NEAREST,
             src: element.textures[0]
         })
-
         depth_M = world
         depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
         bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
 
-        depth_uniforms.depthMVP = depth_MVP
         bufferInfo = element.bufferInfo
-
-        twgl.setBuffersAndAttributes(gl, bumpProgramInfo, bufferInfo)
-        twgl.setUniforms(bumpProgramInfo, bump_uniforms)
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo)
+        twgl.setUniforms(programInfo, [bump_uniforms, dirLight_uniforms, pointLight_uniforms])
         twgl.drawBufferInfo(gl, bufferInfo)
     })
 
@@ -418,9 +453,42 @@ function render(time) {
     requestAnimationFrame(render)
 }
 
+function start() {
+
+    // Adding object
+    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
+    obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
+    floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    g_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    r_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+    g_wall_2.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
+
+    object_list.push(box)
+    object_list.push(obj2)
+    object_list.push(floor)
+    object_list.push(r_wall)
+    object_list.push(g_wall)
+    object_list.push(r_wall_2)
+    object_list.push(g_wall_2)
+    
+    directional_light.rotation = v3.create(-0.4, -1.2, 0)
+
+    pointLight_uniforms.pointLights_color =
+        pointLight_uniforms.pointLights_color.concat(point_light.color)
+    pointLight_uniforms.pointLights_position =
+        pointLight_uniforms.pointLights_position.concat(Array.from(point_light.position))
+    pointLight_uniforms.pointLights_power.push(point_light.power)
+    pointLight_uniforms.pointLights_linear.push(point_light.linear)
+    pointLight_uniforms.pointLights_exp.push(point_light.exp)
+    pointLight_uniforms.pointLights_constant.push(point_light.constant)
+}
+
 function update(delta_time) {
     obj2.rotate([delta_time, 0, 0])
+    //directional_light.rotate([0, delta_time/2, 0])
 }
 
 init()
+start()
 requestAnimationFrame(render)

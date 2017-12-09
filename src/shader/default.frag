@@ -1,49 +1,140 @@
 #version 300 es
+#define MAX_POINT_LIGHTS 16
 
 precision mediump float;
 
 in vec4 v_position;
-//in vec4 v_shadowPosition;
-in vec2 v_texCoord;
 in vec3 v_normal;
-in vec3 v_surfaceToLight;
-in vec3 v_surfaceToView;
-in float v_distanceToLight;
+in vec2 v_texcoord;
+in vec4 v_shadowcoord;
 
-uniform vec4 u_lightColor;
-uniform float u_lightPower;
-uniform vec4 u_ambient;
-uniform sampler2D u_diffuse;
-uniform vec4 u_specular;
-uniform float u_shininess;
-uniform float u_specularFactor;
+in vec3 v_lightToEye_cam_dir;
+in vec3 v_eye_cam_dir;
+in vec3 v_worldPos;
+in vec3 v_worldCamPos;
+
+in float v_light_dist;
+in mat4 v_V;
+in mat4 v_M;
+
+uniform sampler2D texture_0;
+uniform sampler2D depth_texture;
+//uniform samplerCube depth_cube_texture;
+
+//uniform vec3 cam_pos;
+uniform vec3 dirLight_dir;
+uniform vec4 dirLight_color;
+uniform float dirLight_power;
+
+uniform vec4 diffuse_color;
+uniform vec4 ambient_color;
+uniform vec4 specular_color;
+uniform float shininess;
+
+uniform int pointLights_num;
+uniform vec4 pointLights_color[MAX_POINT_LIGHTS];
+uniform vec3 pointLights_position[MAX_POINT_LIGHTS];
+uniform float pointLights_power[MAX_POINT_LIGHTS];
+uniform float pointLights_constant[MAX_POINT_LIGHTS];
+uniform float pointLights_linear[MAX_POINT_LIGHTS];
+uniform float pointLights_exp[MAX_POINT_LIGHTS];
 
 out vec4 outColor;
 
-vec4 lit(float l ,float h, float m) {
-  return vec4(1.0,
-              max(l, 0.0),
-              (l > 0.0) ? pow(max(0.0, h), m) : 0.0,
-              1.0);
+const vec2 poissonDisk[4] = vec2[](
+   	vec2( -0.94201624, -0.39906216 ), 
+   	vec2( 0.94558609, -0.76890725 ), 
+   	vec2( -0.094184101, -0.92938870 ), 
+   	vec2( 0.34495938, 0.29387760 )
+);
+
+/*
+float random(vec3 co, int index){
+	vec4 seed4 = vec4(co,index);
+	float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+	return fract(sin(dot_product) * 43758.5453);
+}
+*/
+
+vec4 CalcLightInternal(vec4 l_color, float l_power, vec3 l_direction, vec3 normal)
+{
+	vec4 ambient = ambient_color * diffuse_color;
+	float diffuse_factor = clamp(dot(normal, -l_direction), 0.0, 1.0);
+
+	vec4 diffuse = vec4(0.0, 0.0, 0.0, 0.0);
+    vec4 specular = vec4(0.0, 0.0, 0.0, 0.0);
+
+
+	float visibility = 1.0;
+	/* Shadow mapping */
+	float bias = 0.005 * tan(acos(diffuse_factor));
+	bias = clamp(bias, 0.0, 0.01);
+	for (int i=0;i<4;i++){
+		//int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
+		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/700.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
+			visibility-=0.15;
+		}
+	}
+
+	if(diffuse_factor > 0.0){
+		diffuse = l_color * l_power * diffuse_color * diffuse_factor;
+		vec3 vertexToEye = normalize(v_worldCamPos - v_worldPos);
+		vec3 l_reflect = normalize(reflect(l_direction, normal));
+		float specular_factor = dot(vertexToEye, l_reflect);
+		if(specular_factor > 0.0){
+			specular_factor = pow(specular_factor, shininess);
+			specular = l_color * l_power * specular_color * specular_factor;
+		} 
+	}
+
+	return (ambient + visibility*(diffuse + specular));
 }
 
-void main() {
-  vec4 diffuseColor = texture(u_diffuse, v_texCoord);
-  vec3 a_normal = normalize(v_normal);
-  vec3 surfaceToLight = normalize(v_surfaceToLight);
-  vec3 surfaceToView = normalize(v_surfaceToView);
-  vec3 halfVector = normalize(surfaceToLight + surfaceToView);
-  vec4 litR = lit(dot(a_normal, surfaceToLight),
-                    dot(a_normal, halfVector), u_shininess);
+vec4 CalcDirectionalLight(vec3 normal)
+{
+	vec3 n = normalize(normal);
+	vec3 l = normalize((v_V * vec4(dirLight_dir, 0.0)).xyz);
+    return CalcLightInternal(dirLight_color, dirLight_power, l, n);
+} 
+vec4 CalcPointLight(int index, vec3 normal)
+{
+	vec3 l_direction = v_worldPos - pointLights_position[index];
+	float l_distance = length(l_direction);
+	l_direction = (v_V * vec4(l_direction, 0.0)).xyz;
+	vec3 l = normalize(l_direction);
+	vec3 n = normalize(normal);
 
-  float distanceFactor = (v_distanceToLight * v_distanceToLight);
-  outColor = vec4(
-    (
-      u_lightColor * u_lightPower*(
-        diffuseColor * u_ambient +
-        (diffuseColor * litR.y)/distanceFactor + 
-        (u_specular * litR.z * u_specularFactor)/distanceFactor
-      )
-    ).rgb,diffuseColor.a);
+	vec4 l_color = CalcLightInternal(
+		pointLights_color[index],
+		pointLights_power[index],
+		l,
+		n
+	);
+
+	float attenuation = 
+		pointLights_constant[index] +
+		pointLights_linear[index] * l_distance +
+		pointLights_exp[index] * l_distance * l_distance;
+
+	return l_color / attenuation;
 }
-  
+void main()
+{
+	vec4 totalColor = CalcDirectionalLight(v_normal);
+	vec4 texColor = texture(texture_0, v_texcoord);
+
+	for (int i = 0; i < pointLights_num; i++){
+		totalColor += CalcPointLight(i, v_normal);
+	}
+
+	outColor = texColor * totalColor;
+
+	/*
+		ambient_color * diffuse_color *  texColor +
+		dirLight_color * dirLight_power * visibility * (
+			+ diffuse_color * texColor * lambertian
+			+ specular_color * specular
+		) / (v_light_dist * v_light_dist);
+	*/
+	
+}
