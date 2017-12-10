@@ -1,5 +1,6 @@
 #version 300 es
 #define MAX_POINT_LIGHTS 16
+#define MAX_SPOT_LIGHTS 16
 
 precision mediump float;
 
@@ -39,6 +40,16 @@ uniform float pointLights_constant[MAX_POINT_LIGHTS];
 uniform float pointLights_linear[MAX_POINT_LIGHTS];
 uniform float pointLights_exp[MAX_POINT_LIGHTS];
 
+uniform int spotLights_num;
+uniform vec4 spotLights_color[MAX_SPOT_LIGHTS];
+uniform vec3 spotLights_position[MAX_SPOT_LIGHTS];
+uniform vec3 spotLights_direction[MAX_SPOT_LIGHTS];
+uniform float spotLights_power[MAX_SPOT_LIGHTS];
+uniform float spotLights_cutoff[MAX_SPOT_LIGHTS];
+uniform float spotLights_constant[MAX_SPOT_LIGHTS];
+uniform float spotLights_linear[MAX_SPOT_LIGHTS];
+uniform float spotLights_exp[MAX_SPOT_LIGHTS];
+
 out vec4 outColor;
 
 const vec2 poissonDisk[4] = vec2[](
@@ -67,8 +78,8 @@ vec4 CalcLightInternal(vec4 l_color, float l_power, vec3 l_direction, vec3 norma
 
 	float visibility = 1.0;
 	/* Shadow mapping */
-	float bias = 0.005 * tan(acos(diffuse_factor));
-	bias = clamp(bias, 0.0, 0.01);
+	float bias = 0.001 * tan(acos(diffuse_factor));
+	bias = clamp(bias, 0.0, 0.002);
 	for (int i=0;i<4;i++){
 		//int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
 		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/700.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
@@ -118,6 +129,45 @@ vec4 CalcPointLight(int index, vec3 normal)
 
 	return l_color / attenuation;
 }
+
+vec4 CalcSpotLight(int index, vec3 normal)
+{
+	vec3 l_to_pixel = v_worldPos - spotLights_position[index];
+	//l_to_pixel = (v_V * vec4(l_to_pixel, 0.0)).xyz;
+
+	l_to_pixel = normalize(l_to_pixel);
+
+	float spotFactor = dot(l_to_pixel, spotLights_direction[index]);
+	vec4 outcolor = vec4(0.0, 0.0, 0.0, 0.0);
+	if(spotFactor > spotLights_cutoff[index]){
+		vec3 l_direction = v_worldPos - spotLights_position[index];
+		float l_distance = length(l_direction);
+		l_direction = (v_V * vec4(l_direction, 0.0)).xyz;
+		vec3 l = normalize(l_direction);
+		vec3 n = normalize(normal);
+
+		vec4 l_color = CalcLightInternal(
+			spotLights_color[index],
+			spotLights_power[index],
+			l,
+			n
+		);
+
+		float attenuation = 
+			spotLights_constant[index] +
+			spotLights_linear[index] * l_distance +
+			spotLights_exp[index] * l_distance * l_distance;
+
+		outcolor = l_color / attenuation;
+		return outcolor * (1.0 - (1.0 - spotFactor) * 1.0/(1.0 - spotLights_cutoff[index]));
+		//return l_color / attenuation;
+	}else{
+		return vec4(0.0,0.0,0.0,0.0);
+	}
+
+	//r
+}
+
 void main()
 {
 	vec4 totalColor = CalcDirectionalLight(v_normal);
@@ -125,6 +175,10 @@ void main()
 
 	for (int i = 0; i < pointLights_num; i++){
 		totalColor += CalcPointLight(i, v_normal);
+	}
+
+	for (int i = 0; i < spotLights_num; i++){
+		totalColor += CalcSpotLight(i, v_normal);
 	}
 
 	outColor = texColor * totalColor;

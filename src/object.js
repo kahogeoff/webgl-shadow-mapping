@@ -1,5 +1,6 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
+import { vec3 } from "gl-matrix";
 //import { vec3 } from "gl-matrix"
 const m4 = twgl.m4
 const v3 = twgl.v3
@@ -26,11 +27,19 @@ class BaseObject {
         return mat
     }
 
-    translate(value/*: number[3]*/){
+    get forward() {
+        var x = this.position[0] + Math.cos(this.rotation[0]) * Math.cos(this.rotation[1])
+        var y = this.position[1] + Math.sin(this.rotation[0])
+        var z = this.position[2] - Math.cos(this.rotation[0]) * Math.sin(this.rotation[1])
+
+        return v3.create(x, y, z)
+    }
+
+    translate(value /*: number[3]*/ ) {
         v3.add(this.position, value, this.position)
     }
 
-    rotate(value/*: number[3]*/){
+    rotate(value /*: number[3]*/ ) {
         v3.add(this.rotation, value, this.rotation)
     }
 }
@@ -53,7 +62,7 @@ export class ModelObject extends BaseObject {
             shininess: 8,
         }
         this.bufferInfo = undefined
-        this.childern/*: ModelObject[]*/ = []
+        this.childern /*: ModelObject[]*/ = []
         this.cast_shadow = true
         this.recive_shadow = true
         //this.shaderProgramInfo = {}
@@ -94,14 +103,6 @@ export class DirectionalLightObject extends BasicLightObject {
         //this.ambient = [0, 0, 0, 1]
 
     }
-
-    get direction() {
-        var x = Math.cos(this.rotation[0]) * Math.cos(this.rotation[1])
-        var y = Math.sin(this.rotation[0])
-        var z = - Math.cos(this.rotation[0]) * Math.sin(this.rotation[1])
-
-        return v3.create(x, y, z)
-    }
 }
 
 export class PointLightObject extends BasicLightObject {
@@ -115,6 +116,21 @@ export class PointLightObject extends BasicLightObject {
 
     }
 }
+
+export class SpotLightObject extends PointLightObject {
+    constructor() {
+        super()
+        this.name = "SpotLight"
+        this.cutoff = 1.0
+        //this.ambient = [0, 0, 0, 1]
+
+    }
+
+    get direction(){
+        return v3.subtract(this.position, this.forward)
+    }
+}
+
 
 export class CameraObject extends BaseObject {
     constructor() {
@@ -144,6 +160,7 @@ export class CameraObject extends BaseObject {
         return this.fov_angle * Math.PI / 180
     }
 
+    /*
     get forward() {
         var x = this.position[0] + Math.cos(this.rotation[0]) * Math.cos(this.rotation[1])
         var y = this.position[1] + Math.sin(this.rotation[0])
@@ -151,4 +168,5 @@ export class CameraObject extends BaseObject {
 
         return v3.create(x, y, z)
     }
+    */
 }

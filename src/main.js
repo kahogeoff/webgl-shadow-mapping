@@ -10,6 +10,7 @@ import {
     ModelObject,
     PointLightObject,
     DirectionalLightObject,
+    SpotLightObject,
     CameraObject
 } from "./object"
 const m4 = twgl.m4
@@ -77,6 +78,7 @@ obj2.textures.push([
 let floor = new ModelObject()
 floor.name = "Floor"
 floor.cast_shadow = false
+floor.material.shininess = 1
 floor.textures.push([
     24, 24, 255, 255,
 ])
@@ -119,19 +121,28 @@ r_wall_2.textures.push([
 
 // Set up a directional light
 let directional_light = new DirectionalLightObject()
-//directional_light.position = v3.create(1, 3, -2)
 directional_light.name = "MyLittleDirectionalLight"
 directional_light.color = [0.8, 0.8, 0.8, 1]
-directional_light.power = 1
+directional_light.power = 0.5
 
-// Set up a point light
+/* Set up a point light */
 let point_light = new PointLightObject()
-//directional_light.position = v3.create(1, 3, -2)
 point_light.name = "MyLittlePointLight"
-point_light.position = v3.create(1, 3, -2)
-point_light.color = [0.8, 0.8, 0.8, 1]
+point_light.position = v3.create(1, 2.5, 1)
+point_light.color = [0.9, 0.9, 0.1, 1]
 point_light.power = 2
-point_light.exp = 5
+point_light.exp = 0.8
+/**/
+
+/**/
+let spot_light = new SpotLightObject()
+spot_light.name = "MyLittleSpotLight"
+spot_light.position = v3.create(1, 1, -1)
+spot_light.color = [0.9, 0.1, 0.1, 1]
+spot_light.power = 4
+spot_light.exp = 0.6
+spot_light.cutoff = 0.5
+/**/
 
 // Set up a camera
 let camera = new CameraObject()
@@ -159,13 +170,24 @@ let dirLight_uniforms = {
     dirLight_power: 1,
 }
 let pointLight_uniforms = {
-    pointLights_num: 1,
+    pointLights_num: 0,
     pointLights_color: [],
     pointLights_position: [],
     pointLights_power: [],
     pointLights_constant: [],
     pointLights_linear: [],
     pointLights_exp: [],
+}
+let spotLights_uniforms = {
+    spotLights_num: 0,
+    spotLights_color: [],
+    spotLights_position: [],
+    spotLights_direction: [],
+    spotLights_power: [],
+    spotLights_constant: [],
+    spotLights_linear: [],
+    spotLights_exp: [],
+    spotLights_cutoff: [],
 }
 let depth_uniforms = {}
 let light_hint_uniforms = {}
@@ -243,19 +265,29 @@ function init() {
     //console.log(bufferInfo)
 
     dirLight_uniforms = {
-        dirLight_dir: directional_light.direction,
+        dirLight_dir: directional_light.forward,
         dirLight_color: directional_light.color,
         dirLight_power: directional_light.power,
     }
-
+    
     pointLight_uniforms = {
-        pointLights_num: 1,
         pointLights_color: [],
         pointLights_position: [],
         pointLights_power: [],
         pointLights_constant: [],
         pointLights_linear: [],
         pointLights_exp: [],
+    }
+
+    spotLights_uniforms = {
+        spotLights_color: [],
+        spotLights_position: [],
+        spotLights_direction: [],
+        spotLights_power: [],
+        spotLights_constant: [],
+        spotLights_linear: [],
+        spotLights_exp: [],
+        spotLights_cutoff: [],
     }
 
     depth_uniforms = {
@@ -329,18 +361,27 @@ function render(time) {
     gl.useProgram(depthProgramInfo.program)
 
     dirLight_uniforms = {
-        dirLight_dir: directional_light.direction,
+        dirLight_dir: directional_light.forward,
         dirLight_color: directional_light.color,
         dirLight_power: directional_light.power,
     }
     pointLight_uniforms = {
-        pointLights_num: 1,
         pointLights_color: [],
         pointLights_position: [],
         pointLights_power: [],
         pointLights_constant: [],
         pointLights_linear: [],
         pointLights_exp: [],
+    }
+    spotLights_uniforms = {
+        spotLights_color: [],
+        spotLights_position: [],
+        spotLights_direction: [],
+        spotLights_power: [],
+        spotLights_constant: [],
+        spotLights_linear: [],
+        spotLights_exp: [],
+        spotLights_cutoff: [],
     }
 
     pointLight_uniforms.pointLights_color =
@@ -351,12 +392,22 @@ function render(time) {
     pointLight_uniforms.pointLights_linear.push(point_light.linear)
     pointLight_uniforms.pointLights_exp.push(point_light.exp)
     pointLight_uniforms.pointLights_constant.push(point_light.constant)
+    pointLight_uniforms.pointLights_num = pointLight_uniforms.pointLights_power.length
 
-    let light_inv_dir = [
-        -directional_light.direction[0], 
-        -directional_light.direction[1],
-        -directional_light.direction[2],
-    ]
+    spotLights_uniforms.spotLights_color =
+        spotLights_uniforms.spotLights_color.concat(spot_light.color)
+    spotLights_uniforms.spotLights_position =
+        spotLights_uniforms.spotLights_position.concat(Array.from(spot_light.position))
+    spotLights_uniforms.spotLights_direction =
+        spotLights_uniforms.spotLights_direction.concat(Array.from(spot_light.direction))
+    spotLights_uniforms.spotLights_power.push(spot_light.power)
+    spotLights_uniforms.spotLights_linear.push(spot_light.linear)
+    spotLights_uniforms.spotLights_exp.push(spot_light.exp)
+    spotLights_uniforms.spotLights_constant.push(spot_light.constant)
+    spotLights_uniforms.spotLights_cutoff.push(spot_light.cutoff)
+    spotLights_uniforms.spotLights_num = spotLights_uniforms.spotLights_power.length
+
+    let light_inv_dir = [-directional_light.forward[0], -directional_light.forward[1], -directional_light.forward[2], ]
 
     let depth_M = m4.identity()
     let depth_P = m4.ortho(-10, 10, -10, 10, -10, 20)
@@ -432,12 +483,21 @@ function render(time) {
 
         bufferInfo = element.bufferInfo
         twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo)
-        twgl.setUniforms(programInfo, [bump_uniforms, dirLight_uniforms, pointLight_uniforms])
+        var uniforms_list = [bump_uniforms,dirLight_uniforms]
+        if(pointLight_uniforms.pointLights_num > 0){
+            uniforms_list.push(pointLight_uniforms)
+        }
+
+        if(spotLights_uniforms.spotLights_num > 0){
+            uniforms_list.push(spotLights_uniforms)
+        }
+        twgl.setUniforms(programInfo, uniforms_list)
         twgl.drawBufferInfo(gl, bufferInfo)
     })
 
     // Draw the light hint
     world = m4.translation(point_light.position)
+    //world = m4.translation(point_light.position)
     light_hint_uniforms.uniform_MVP = m4.multiply(viewProjection, world)
 
     gl.useProgram(lightHintProgramInfo.program)
@@ -471,9 +531,11 @@ function start() {
     object_list.push(g_wall)
     object_list.push(r_wall_2)
     object_list.push(g_wall_2)
-    
-    directional_light.rotation = v3.create(-0.4, -1.2, 0)
 
+    directional_light.rotation = v3.create(-0.4, -1.2, 0)
+    spot_light.rotation = v3.create(-0.4, -1.2, 0)
+
+    
     pointLight_uniforms.pointLights_color =
         pointLight_uniforms.pointLights_color.concat(point_light.color)
     pointLight_uniforms.pointLights_position =
@@ -482,11 +544,24 @@ function start() {
     pointLight_uniforms.pointLights_linear.push(point_light.linear)
     pointLight_uniforms.pointLights_exp.push(point_light.exp)
     pointLight_uniforms.pointLights_constant.push(point_light.constant)
+
+    spotLights_uniforms.spotLights_color =
+        spotLights_uniforms.spotLights_color.concat(spot_light.color)
+    spotLights_uniforms.spotLights_position =
+        spotLights_uniforms.spotLights_position.concat(Array.from(spot_light.position))
+    spotLights_uniforms.spotLights_direction =
+        spotLights_uniforms.spotLights_direction.concat(spot_light.direction)
+    spotLights_uniforms.spotLights_power.push(spot_light.power)
+    spotLights_uniforms.spotLights_linear.push(spot_light.linear)
+    spotLights_uniforms.spotLights_exp.push(spot_light.exp)
+    spotLights_uniforms.spotLights_constant.push(spot_light.constant)
+    spotLights_uniforms.spotLights_cutoff.push(spot_light.cutoff)
+    
 }
 
 function update(delta_time) {
     obj2.rotate([delta_time, 0, 0])
-    //directional_light.rotate([0, delta_time/2, 0])
+    spot_light.rotate([0, delta_time, 0])
 }
 
 init()
