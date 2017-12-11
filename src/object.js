@@ -1,6 +1,6 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
-import { vec3 } from "gl-matrix";
+import { vec3 } from "gl-matrix"
 //import { vec3 } from "gl-matrix"
 const m4 = twgl.m4
 const v3 = twgl.v3
@@ -115,6 +115,18 @@ export class PointLightObject extends BasicLightObject {
         //this.ambient = [0, 0, 0, 1]
 
     }
+
+    getNewUniform(uniform, prefix/*: string*/= "pointLights"){
+        var new_uniform = uniform
+        new_uniform[prefix+"_color"] = new_uniform[prefix+"_color"].concat(this.color)
+        new_uniform[prefix+"_position"] = new_uniform[prefix+"_position"].concat(Array.from(this.position))
+        new_uniform[prefix+"_power"].push(this.power)
+        new_uniform[prefix+"_linear"].push(this.linear)
+        new_uniform[prefix+"_exp"].push(this.exp)
+        new_uniform[prefix+"_constant"].push(this.constant)
+        new_uniform[prefix+"_num"] += 1
+        return new_uniform
+    }
 }
 
 export class SpotLightObject extends PointLightObject {
@@ -129,10 +141,18 @@ export class SpotLightObject extends PointLightObject {
     get direction(){
         return v3.subtract(this.position, this.forward)
     }
+
+    getNewUniform(uniform, prefix/*: string*/= "spotLights"){
+        var new_uniform = super.getNewUniform(uniform, prefix)
+        new_uniform[prefix+"_direction"] = new_uniform[prefix+"_direction"].concat(Array.from(this.direction))
+        new_uniform[prefix+"_cutoff"].push(this.cutoff)
+
+        return new_uniform
+    }
 }
 
 
-export class CameraObject extends BaseObject {
+export class BasicCameraObject extends BaseObject {
     constructor() {
         super()
 

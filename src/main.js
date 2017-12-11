@@ -11,7 +11,7 @@ import {
     PointLightObject,
     DirectionalLightObject,
     SpotLightObject,
-    CameraObject
+    BasicCameraObject
 } from "./object"
 const m4 = twgl.m4
 const v3 = twgl.v3
@@ -131,7 +131,7 @@ point_light.name = "MyLittlePointLight"
 point_light.position = v3.create(1, 2.5, 1)
 point_light.color = [0.9, 0.9, 0.1, 1]
 point_light.power = 2
-point_light.exp = 0.8
+point_light.exp = 0.6
 /**/
 
 /**/
@@ -141,11 +141,11 @@ spot_light.position = v3.create(1, 1, -1)
 spot_light.color = [0.9, 0.1, 0.1, 1]
 spot_light.power = 4
 spot_light.exp = 0.6
-spot_light.cutoff = 0.5
+spot_light.cutoff = 0.9
 /**/
 
 // Set up a camera
-let camera = new CameraObject()
+let camera = new BasicCameraObject()
 camera.name = "MyLittleCamera"
 camera.position = v3.create(-2, 5, -6)
 camera.rotation = v3.create(-0.4, -1.2, 0)
@@ -156,13 +156,12 @@ let object_list = []
 
 let depth_tex = {}
 let depth_cube_tex = []
+
 let bump_uniforms = {
     M: m4.identity(),
     N: m4.identity(),
     V: m4.identity(),
     P: m4.identity(),
-    //light_color: directional_light.color,
-    //light_power: directional_light.power,
 }
 let dirLight_uniforms = {
     dirLight_dir: v3.create(),
@@ -178,7 +177,7 @@ let pointLight_uniforms = {
     pointLights_linear: [],
     pointLights_exp: [],
 }
-let spotLights_uniforms = {
+let spotLight_uniforms = {
     spotLights_num: 0,
     spotLights_color: [],
     spotLights_position: [],
@@ -209,33 +208,33 @@ document.addEventListener("keydown", function (event) {
 
     // Light position control
     if (event.keyCode == 65) {
-        v3.add(point_light.position, v3.create(0.1, 0, 0), point_light.position)
+        point_light.translate([0.1, 0, 0])
         //console.log("Left")
     } else if (event.keyCode == 87) {
-        v3.add(point_light.position, v3.create(0, 0, 0.1), point_light.position)
+        point_light.translate([0, 0, 0.1])
         //console.log("Up")
     } else if (event.keyCode == 68) {
-        v3.add(point_light.position, v3.create(-0.1, 0, 0), point_light.position)
+        point_light.translate([-0.1, 0, 0])
         //console.log("Right")
     } else if (event.keyCode == 83) {
-        v3.add(point_light.position, v3.create(0, 0, -0.1), point_light.position)
+        point_light.translate([0, 0, -0.1])
         //console.log("Up")
     } else if (event.keyCode == 33) {
-        v3.add(point_light.position, v3.create(0, 0.1, 0), point_light.position)
+        point_light.translate([0, 0.1, 0])
         //console.log("Up")
     } else if (event.keyCode == 34) {
-        v3.add(point_light.position, v3.create(0, -0.1, 0), point_light.position)
+        point_light.translate([0, -0.1, 0])
     }
 
     // Camera rotation control
     if (event.keyCode == 38) {
-        v3.add(camera.rotation, v3.create(0.1, 0, 0), camera.rotation)
+        camera.rotate([0.1, 0.0, 0.0])
     } else if (event.keyCode == 40) {
-        v3.add(camera.rotation, v3.create(-0.1, 0, 0), camera.rotation)
+        camera.rotate([-0.1, 0.0, 0.0])
     } else if (event.keyCode == 37) {
-        v3.add(camera.rotation, v3.create(0, 0.1, 0), camera.rotation)
+        camera.rotate([0.0, 0.1, 0.0])
     } else if (event.keyCode == 39) {
-        v3.add(camera.rotation, v3.create(0, -0.1, 0), camera.rotation)
+        camera.rotate([0.0, -0.1, 0.0])
     }
 })
 
@@ -269,8 +268,9 @@ function init() {
         dirLight_color: directional_light.color,
         dirLight_power: directional_light.power,
     }
-    
+
     pointLight_uniforms = {
+        pointLights_num: 0,
         pointLights_color: [],
         pointLights_position: [],
         pointLights_power: [],
@@ -279,7 +279,8 @@ function init() {
         pointLights_exp: [],
     }
 
-    spotLights_uniforms = {
+    spotLight_uniforms = {
+        spotLights_num: 0,
         spotLights_color: [],
         spotLights_position: [],
         spotLights_direction: [],
@@ -365,7 +366,9 @@ function render(time) {
         dirLight_color: directional_light.color,
         dirLight_power: directional_light.power,
     }
+    // Reset the uniforms
     pointLight_uniforms = {
+        pointLights_num: 0,
         pointLights_color: [],
         pointLights_position: [],
         pointLights_power: [],
@@ -373,7 +376,8 @@ function render(time) {
         pointLights_linear: [],
         pointLights_exp: [],
     }
-    spotLights_uniforms = {
+    spotLight_uniforms = {
+        spotLights_num: 0,
         spotLights_color: [],
         spotLights_position: [],
         spotLights_direction: [],
@@ -384,28 +388,11 @@ function render(time) {
         spotLights_cutoff: [],
     }
 
-    pointLight_uniforms.pointLights_color =
-        pointLight_uniforms.pointLights_color.concat(point_light.color)
-    pointLight_uniforms.pointLights_position =
-        pointLight_uniforms.pointLights_position.concat(Array.from(point_light.position))
-    pointLight_uniforms.pointLights_power.push(point_light.power)
-    pointLight_uniforms.pointLights_linear.push(point_light.linear)
-    pointLight_uniforms.pointLights_exp.push(point_light.exp)
-    pointLight_uniforms.pointLights_constant.push(point_light.constant)
-    pointLight_uniforms.pointLights_num = pointLight_uniforms.pointLights_power.length
-
-    spotLights_uniforms.spotLights_color =
-        spotLights_uniforms.spotLights_color.concat(spot_light.color)
-    spotLights_uniforms.spotLights_position =
-        spotLights_uniforms.spotLights_position.concat(Array.from(spot_light.position))
-    spotLights_uniforms.spotLights_direction =
-        spotLights_uniforms.spotLights_direction.concat(Array.from(spot_light.direction))
-    spotLights_uniforms.spotLights_power.push(spot_light.power)
-    spotLights_uniforms.spotLights_linear.push(spot_light.linear)
-    spotLights_uniforms.spotLights_exp.push(spot_light.exp)
-    spotLights_uniforms.spotLights_constant.push(spot_light.constant)
-    spotLights_uniforms.spotLights_cutoff.push(spot_light.cutoff)
-    spotLights_uniforms.spotLights_num = spotLights_uniforms.spotLights_power.length
+    /* Update the point light uniform */
+    pointLight_uniforms = point_light.getNewUniform(pointLight_uniforms)
+    /* Update the spot light uniform */
+    spotLight_uniforms = spot_light.getNewUniform(spotLight_uniforms)
+    //spotLight_uniforms.spotLights_num = spotLight_uniforms.spotLights_power.length    // Update the number of spot light(s)
 
     let light_inv_dir = [-directional_light.forward[0], -directional_light.forward[1], -directional_light.forward[2], ]
 
@@ -477,20 +464,23 @@ function render(time) {
             mag: gl.NEAREST,
             src: element.textures[0]
         })
-        depth_M = world
-        depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-        bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
+        if (element.recive_shadow) {
+            depth_M = world
+            depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
+            bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
+        }
 
         bufferInfo = element.bufferInfo
         twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo)
-        var uniforms_list = [bump_uniforms,dirLight_uniforms]
-        if(pointLight_uniforms.pointLights_num > 0){
+
+        var uniforms_list = [bump_uniforms, dirLight_uniforms]
+        if (pointLight_uniforms.pointLights_num > 0) {
             uniforms_list.push(pointLight_uniforms)
         }
-
-        if(spotLights_uniforms.spotLights_num > 0){
-            uniforms_list.push(spotLights_uniforms)
+        if (spotLight_uniforms.spotLights_num > 0) {
+            uniforms_list.push(spotLight_uniforms)
         }
+
         twgl.setUniforms(programInfo, uniforms_list)
         twgl.drawBufferInfo(gl, bufferInfo)
     })
@@ -535,33 +525,15 @@ function start() {
     directional_light.rotation = v3.create(-0.4, -1.2, 0)
     spot_light.rotation = v3.create(-0.4, -1.2, 0)
 
-    
-    pointLight_uniforms.pointLights_color =
-        pointLight_uniforms.pointLights_color.concat(point_light.color)
-    pointLight_uniforms.pointLights_position =
-        pointLight_uniforms.pointLights_position.concat(Array.from(point_light.position))
-    pointLight_uniforms.pointLights_power.push(point_light.power)
-    pointLight_uniforms.pointLights_linear.push(point_light.linear)
-    pointLight_uniforms.pointLights_exp.push(point_light.exp)
-    pointLight_uniforms.pointLights_constant.push(point_light.constant)
-
-    spotLights_uniforms.spotLights_color =
-        spotLights_uniforms.spotLights_color.concat(spot_light.color)
-    spotLights_uniforms.spotLights_position =
-        spotLights_uniforms.spotLights_position.concat(Array.from(spot_light.position))
-    spotLights_uniforms.spotLights_direction =
-        spotLights_uniforms.spotLights_direction.concat(spot_light.direction)
-    spotLights_uniforms.spotLights_power.push(spot_light.power)
-    spotLights_uniforms.spotLights_linear.push(spot_light.linear)
-    spotLights_uniforms.spotLights_exp.push(spot_light.exp)
-    spotLights_uniforms.spotLights_constant.push(spot_light.constant)
-    spotLights_uniforms.spotLights_cutoff.push(spot_light.cutoff)
-    
+    pointLight_uniforms = point_light.getNewUniform(pointLight_uniforms)
+    spotLight_uniforms = spot_light.getNewUniform(spotLight_uniforms)
 }
 
-function update(delta_time) {
-    obj2.rotate([delta_time, 0, 0])
-    spot_light.rotate([0, delta_time, 0])
+function update(dt) {
+    
+    obj2.rotate([dt, 0, 0])
+    spot_light.rotate([0, dt, 0])
+    directional_light.rotate([0, -dt/2, 0])
 }
 
 init()

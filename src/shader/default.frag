@@ -67,25 +67,13 @@ float random(vec3 co, int index){
 }
 */
 
-vec4 CalcLightInternal(vec4 l_color, float l_power, vec3 l_direction, vec3 normal)
+vec4 CalcLightInternal(vec4 l_color, float l_power, vec3 l_direction, vec3 normal, float visibility)
 {
 	vec4 ambient = ambient_color * diffuse_color;
 	float diffuse_factor = clamp(dot(normal, -l_direction), 0.0, 1.0);
 
 	vec4 diffuse = vec4(0.0, 0.0, 0.0, 0.0);
     vec4 specular = vec4(0.0, 0.0, 0.0, 0.0);
-
-
-	float visibility = 1.0;
-	/* Shadow mapping */
-	float bias = 0.001 * tan(acos(diffuse_factor));
-	bias = clamp(bias, 0.0, 0.002);
-	for (int i=0;i<4;i++){
-		//int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
-		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/700.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
-			visibility-=0.15;
-		}
-	}
 
 	if(diffuse_factor > 0.0){
 		diffuse = l_color * l_power * diffuse_color * diffuse_factor;
@@ -105,10 +93,24 @@ vec4 CalcDirectionalLight(vec3 normal)
 {
 	vec3 n = normalize(normal);
 	vec3 l = normalize((v_V * vec4(dirLight_dir, 0.0)).xyz);
-    return CalcLightInternal(dirLight_color, dirLight_power, l, n);
+
+	float diffuse_factor = clamp(dot(n, -l), 0.0, 1.0);
+	float visibility = 1.0;
+	/* Shadow mapping */
+	float bias = 0.001 * tan(acos(diffuse_factor));
+	bias = clamp(bias, 0.0, 0.005);
+	for (int i=0;i<4;i++){
+		//int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
+		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/700.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
+			visibility-=0.15;
+		}
+	}
+
+    return CalcLightInternal(dirLight_color, dirLight_power, l, n, visibility);
 } 
 vec4 CalcPointLight(int index, vec3 normal)
 {
+	
 	vec3 l_direction = v_worldPos - pointLights_position[index];
 	float l_distance = length(l_direction);
 	l_direction = (v_V * vec4(l_direction, 0.0)).xyz;
@@ -119,7 +121,7 @@ vec4 CalcPointLight(int index, vec3 normal)
 		pointLights_color[index],
 		pointLights_power[index],
 		l,
-		n
+		n, 1.0
 	);
 
 	float attenuation = 
@@ -150,7 +152,7 @@ vec4 CalcSpotLight(int index, vec3 normal)
 			spotLights_color[index],
 			spotLights_power[index],
 			l,
-			n
+			n, 1.0
 		);
 
 		float attenuation = 
@@ -162,10 +164,8 @@ vec4 CalcSpotLight(int index, vec3 normal)
 		return outcolor * (1.0 - (1.0 - spotFactor) * 1.0/(1.0 - spotLights_cutoff[index]));
 		//return l_color / attenuation;
 	}else{
-		return vec4(0.0,0.0,0.0,0.0);
+		return outcolor;
 	}
-
-	//r
 }
 
 void main()
