@@ -9,8 +9,8 @@ in vec3 v_normal;
 in vec2 v_texcoord;
 in vec4 v_shadowcoord;
 
-in vec3 v_lightToEye_cam_dir;
-in vec3 v_eye_cam_dir;
+//in vec3 v_lightToEye_cam_dir;
+//in vec3 v_eye_cam_dir;
 in vec3 v_worldPos;
 in vec3 v_worldCamPos;
 
@@ -23,9 +23,12 @@ uniform sampler2D depth_texture;
 //uniform samplerCube depth_cube_texture;
 
 //uniform vec3 cam_pos;
-uniform vec3 dirLight_dir;
-uniform vec4 dirLight_color;
-uniform float dirLight_power;
+struct DirectionalLight {
+	vec3 dir;
+	vec4 color;
+	float power;	
+};
+uniform DirectionalLight dirLight;
 
 uniform vec4 diffuse_color;
 uniform vec4 ambient_color;
@@ -33,6 +36,17 @@ uniform vec4 specular_color;
 uniform float shininess;
 
 uniform int pointLights_num;
+/*
+struct PointLight{
+	vec3 position;
+	vec4 color;
+	float power;
+	float constant;
+	float linear;
+	float exp_factor;
+};
+uniform PointLight pointLights[MAX_POINT_LIGHTS];
+*/
 uniform vec4 pointLights_color[MAX_POINT_LIGHTS];
 uniform vec3 pointLights_position[MAX_POINT_LIGHTS];
 uniform float pointLights_power[MAX_POINT_LIGHTS];
@@ -49,7 +63,6 @@ uniform float spotLights_cutoff[MAX_SPOT_LIGHTS];
 uniform float spotLights_constant[MAX_SPOT_LIGHTS];
 uniform float spotLights_linear[MAX_SPOT_LIGHTS];
 uniform float spotLights_exp[MAX_SPOT_LIGHTS];
-
 out vec4 outColor;
 
 const vec2 poissonDisk[4] = vec2[](
@@ -92,7 +105,7 @@ vec4 CalcLightInternal(vec4 l_color, float l_power, vec3 l_direction, vec3 norma
 vec4 CalcDirectionalLight(vec3 normal)
 {
 	vec3 n = normalize(normal);
-	vec3 l = normalize((v_V * vec4(dirLight_dir, 0.0)).xyz);
+	vec3 l = normalize((v_V * vec4(dirLight.dir, 0.0)).xyz);
 
 	float diffuse_factor = clamp(dot(n, -l), 0.0, 1.0);
 	float visibility = 1.0;
@@ -106,13 +119,15 @@ vec4 CalcDirectionalLight(vec3 normal)
 		}
 	}
 
-    return CalcLightInternal(dirLight_color, dirLight_power, l, n, visibility);
+    return CalcLightInternal(dirLight.color, dirLight.power, l, n, visibility);
 } 
 vec4 CalcPointLight(int index, vec3 normal)
 {
-	
+	//vec3 l_viewPosition = (v_V * vec4(pointLights_position[index], 1.0)).xyz;
+	//vec3 viewPosition = (v_V * vec4(v_worldPos, 1.0)).xyz;
+	//vec3 l_direction = viewPosition - l_viewPosition;
 	vec3 l_direction = v_worldPos - pointLights_position[index];
-	float l_distance = length(l_direction);
+	float l_distance = distance(v_worldPos, pointLights_position[index]);
 	l_direction = (v_V * vec4(l_direction, 0.0)).xyz;
 	vec3 l = normalize(l_direction);
 	vec3 n = normalize(normal);

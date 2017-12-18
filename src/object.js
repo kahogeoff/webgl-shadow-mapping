@@ -96,6 +96,7 @@ export class BasicLightObject extends BaseObject {
 }
 
 export class DirectionalLightObject extends BasicLightObject {
+    
     constructor() {
         super()
         this.name = "DirectionalLight"
@@ -105,14 +106,20 @@ export class DirectionalLightObject extends BasicLightObject {
     }
 }
 
+global.nextPointLightID = 0
+global.nextSpotLightID = 0
+
 export class PointLightObject extends BasicLightObject {
     constructor() {
         super()
+        this.id = global.nextPointLightID
         this.name = "PointLight"
         this.constant = 1.0
         this.linear = 1.0
         this.exp = 1.0
         //this.ambient = [0, 0, 0, 1]
+
+        global.nextPointLightID++
 
     }
 
@@ -127,15 +134,29 @@ export class PointLightObject extends BasicLightObject {
         new_uniform[prefix+"_num"] += 1
         return new_uniform
     }
+    /*
+    updateUniform(uniform, prefix = "pointLights"){
+        //var new_uniform = uniform
+
+        uniform[prefix+"["+this.id+"].color"] = this.color
+        uniform[prefix+"["+this.id+"].position"] = this.position
+        uniform[prefix+"["+this.id+"].power"] = this.power
+        uniform[prefix+"["+this.id+"].linear"] = this.linear
+        uniform[prefix+"["+this.id+"].exp_factor"] = this.exp
+        uniform[prefix+"["+this.id+"].constant"] = this.constant
+    }
+    */
 }
 
 export class SpotLightObject extends PointLightObject {
+
     constructor() {
         super()
+        this.id = global.nextSpotLightID
         this.name = "SpotLight"
         this.cutoff = 1.0
         //this.ambient = [0, 0, 0, 1]
-
+        global.nextSpotLightID++
     }
 
     get direction(){
@@ -149,6 +170,15 @@ export class SpotLightObject extends PointLightObject {
 
         return new_uniform
     }
+
+    /*
+    updateUniform(uniform, prefix = "spotLights"){
+        super.getNewUniform(uniform, prefix)
+        uniform[prefix+"["+this.id+"].direction"] = this.direction
+        uniform[prefix+"["+this.id+"].cutoff"] = this.cutoff
+        
+    }
+    */
 }
 
 

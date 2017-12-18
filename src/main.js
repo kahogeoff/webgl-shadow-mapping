@@ -1,7 +1,8 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
 import {
-    glMatrix
+    glMatrix,
+    vec2
 } from "gl-matrix"
 
 import * as keyboardjs from "keyboardjs"
@@ -16,6 +17,7 @@ import {
 const m4 = twgl.m4
 const v3 = twgl.v3
 
+// variable
 let canvas /*: HTMLCanvasElement */ = undefined
 let gl /*: WebGLRenderingContext */ = undefined
 
@@ -164,9 +166,9 @@ let bump_uniforms = {
     P: m4.identity(),
 }
 let dirLight_uniforms = {
-    dirLight_dir: v3.create(),
-    dirLight_color: [1, 1, 1, 1],
-    dirLight_power: 1,
+    "dirLight.dir": v3.create(),
+    "dirLight.color": [1, 1, 1, 1],
+    "dirLight.power": 1,
 }
 let pointLight_uniforms = {
     pointLights_num: 0,
@@ -177,6 +179,11 @@ let pointLight_uniforms = {
     pointLights_linear: [],
     pointLights_exp: [],
 }
+/*
+let pointLight_struct_uniforms = {
+    pointLights_num: 0
+}
+*/
 let spotLight_uniforms = {
     spotLights_num: 0,
     spotLights_color: [],
@@ -200,6 +207,10 @@ let bias_matrix = [
     0.0, 0.0, 0.5, 0.0,
     0.5, 0.5, 0.5, 1.0
 ]
+
+let canMove = false
+let previousMousePosition = vec2.create()
+let cameraMoveDirection = vec2.create()
 
 document.addEventListener("keydown", function (event) {
     if (event.keyCode == 32) {
@@ -243,6 +254,7 @@ function init() {
     canvas.width = 800
     canvas.height = 600
     document.body.appendChild(canvas)
+    canvas.requestPointerLock = canvas.requestPointerLock
 
     gl = canvas.getContext("webgl2")
     if (!gl) {
@@ -264,9 +276,9 @@ function init() {
     //console.log(bufferInfo)
 
     dirLight_uniforms = {
-        dirLight_dir: directional_light.forward,
-        dirLight_color: directional_light.color,
-        dirLight_power: directional_light.power,
+        "dirLight.dir": directional_light.forward,
+        "dirLight.color": directional_light.color,
+        "dirLight.power": directional_light.power,
     }
 
     pointLight_uniforms = {
@@ -335,8 +347,35 @@ function init() {
     }
 
     // Mouse test
+    canvas.addEventListener("mouseover", (e) => {
+        canMove = true
+    })
+
+    canvas.addEventListener("mouseout", (e) => {
+        canMove = false
+    })
+
+    canvas.addEventListener("mousemove", (e) => {
+        var rect = canvas.getBoundingClientRect()
+        var currentX = e.clientX - rect.left
+        var currentY = e.clientY - rect.top
+        
+        vec2.add(previousMousePosition, [0,0], [e.movementX, e.movementY])
+        vec2.set(cameraMoveDirection, previousMousePosition[0],previousMousePosition[1])
+        vec2.normalize(cameraMoveDirection,cameraMoveDirection)
+        /*
+        if(vec2.distance(previousMousePosition, [400, 300]) > 50){
+            canMove = true
+        }else{
+            canMove = false
+        }
+        */
+        //console.log(cameraMoveDirection)
+    })
+
     canvas.addEventListener("mousedown", (e) => {
         var rect = canvas.getBoundingClientRect()
+        //canvas.requestPointerLock()
         console.log((e.clientX - rect.left) + ", " + (e.clientY - rect.top))
     })
 }
@@ -362,9 +401,9 @@ function render(time) {
     gl.useProgram(depthProgramInfo.program)
 
     dirLight_uniforms = {
-        dirLight_dir: directional_light.forward,
-        dirLight_color: directional_light.color,
-        dirLight_power: directional_light.power,
+        "dirLight.dir": directional_light.forward,
+        "dirLight.color": directional_light.color,
+        "dirLight.power": directional_light.power,
     }
     // Reset the uniforms
     pointLight_uniforms = {
@@ -534,6 +573,14 @@ function update(dt) {
     obj2.rotate([dt, 0, 0])
     spot_light.rotate([0, dt, 0])
     directional_light.rotate([0, -dt/2, 0])
+
+    if(canMove){
+        //camera.rotate([-cameraMoveDirection[1]* dt, -cameraMoveDirection[0]* dt, 0])
+        if(vec2.length(cameraMoveDirection) > 0 ){
+            //vec2.sub(cameraMoveDirection, cameraMoveDirection , [cameraMoveDirection[0] * dt, cameraMoveDirection[1] * dt])
+        }
+        
+    }
 }
 
 init()

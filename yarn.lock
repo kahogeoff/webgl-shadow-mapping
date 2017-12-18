@@ -3427,8 +3427,8 @@ tweetnacl@^0.14.3, tweetnacl@~0.14.0:
   resolved "https://registry.yarnpkg.com/tweetnacl/-/tweetnacl-0.14.5.tgz#5ae68177f192d4456269d108afa93ff8743f4f64"
 
 twgl.js@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/twgl.js/-/twgl.js-4.0.0.tgz#2aa2abf2807157bfe05e4787668e9aa6b80cbdca"
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/twgl.js/-/twgl.js-4.2.0.tgz#4387d5ed62ede8ca474308b172a7487598119c85"
 
 type-is@~1.6.15:
   version "1.6.15"
