@@ -1,0 +1,21 @@
+#version 300 es
+
+precision mediump float;
+
+in vec3 v_position;
+in vec3 v_normal;
+in vec3 v_worldPosition;
+
+uniform vec4 color;
+
+layout(location = 0) out vec4 depthTex;
+layout(location = 1) out vec4 normalTex;
+layout(location = 2) out vec4 fluxTex;
+layout(location = 3) out vec4 worldPosTex;
+
+void main(){
+    depthTex = vec4(vec3(v_position.z), 1.0);
+    normalTex = vec4(vec3(v_normal.xyz), 1.0);
+    fluxTex = vec4(vec3(color.xyz), 1.0);
+    worldPosTex = vec4(vec3(v_worldPosition.xyz), 1.0);
+}

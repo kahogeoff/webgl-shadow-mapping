@@ -29,16 +29,20 @@ let defaultVertex = require("./shader/default.vert")
 let defaultFragment = require("./shader/default.frag")
 let lightHintVertex = require("./shader/light_hint.vert")
 let lightHintFragment = require("./shader/light_hint.frag")
-let bumpVertex = require("./shader/bump.vert")
-let bumpFragment = require("./shader/bump.frag")
 let depthVertex = require("./shader/depth.vert")
 let depthFragment = require("./shader/depth.frag")
+let rsmVertex = require("./shader/rsm.vert")
+let rsmFragment = require("./shader/rsm.frag")
 
 let programInfo = undefined
-let depthProgramInfo = undefined
-let bumpProgramInfo = undefined
+//let depthProgramInfo = undefined
+let rsmProgramInfo = undefined
 let lightHintProgramInfo = undefined
+
+
 let bufferInfo = undefined
+let rsmFrameBufferInfo = undefined
+let gFrameBufferInfo = undefined
 
 let frameBuffer = undefined
 //let renderBufferID = undefined
@@ -46,7 +50,6 @@ let frameBuffer = undefined
 // Set up a box
 let box = new ModelObject()
 box.name = "A freaking box"
-//box.scale = v3.create(0.5, 0.5, 0.5)
 box.model_data = {
     position: [1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1],
     normal: [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1],
@@ -157,7 +160,7 @@ camera.zFar = 300
 let object_list = []
 
 let depth_tex = {}
-let depth_cube_tex = []
+//let depth_cube_tex = []
 
 let bump_uniforms = {
     M: m4.identity(),
@@ -197,6 +200,7 @@ let spotLight_uniforms = {
 }
 let depth_uniforms = {}
 let light_hint_uniforms = {}
+let rsm_uniforms = {}
 
 let previous_time = 0
 let delta_time = 0
@@ -212,6 +216,7 @@ let canMove = false
 let previousMousePosition = vec2.create()
 let cameraMoveDirection = vec2.create()
 
+/* Keyboard control */
 document.addEventListener("keydown", function (event) {
     if (event.keyCode == 32) {
         console.log(camera.rotation)
@@ -269,9 +274,11 @@ function init() {
     gl.depthFunc(gl.LEQUAL)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
+    twgl.addExtensionsToContext(gl)
+
     programInfo = twgl.createProgramInfo(gl, [defaultVertex, defaultFragment])
-    depthProgramInfo = twgl.createProgramInfo(gl, [depthVertex, depthFragment])
-    bumpProgramInfo = twgl.createProgramInfo(gl, [bumpVertex, bumpFragment])
+    //depthProgramInfo = twgl.createProgramInfo(gl, [depthVertex, depthFragment])
+    rsmProgramInfo = twgl.createProgramInfo(gl, [rsmVertex, rsmFragment])
     lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
     //console.log(bufferInfo)
 
@@ -311,10 +318,11 @@ function init() {
     }
 
     // Set frame buffer
-    frameBuffer = gl.createFramebuffer()
-    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer)
+    //frameBuffer = gl.createFramebuffer()
+    //gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer)
 
     // Set depth texture
+    /*
     depth_tex = twgl.createTexture(gl, {
         width: shadowDepthTextureSize,
         height: shadowDepthTextureSize,
@@ -324,7 +332,27 @@ function init() {
         warp: gl.CLAMP_TO_EDGE
     })
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_tex, 0)
+    */
 
+    //Frame buffer info for RSM
+    rsmFrameBufferInfo = twgl.createFramebufferInfo(gl, [
+        {
+            minMag: gl.NEAREST,
+            internalFormat: gl.DEPTH_COMPONENT16,
+            format: gl.DEPTH_COMPONENT
+        }, //depth
+        { attach: gl.COLOR_ATTACHMENT0 + 1, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST }, //normal
+        { attach: gl.COLOR_ATTACHMENT0 + 2, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST }, //flux
+        { attach: gl.COLOR_ATTACHMENT0 + 3, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST } //world-space position
+    ], shadowDepthTextureSize, shadowDepthTextureSize)
+    //gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rsmFrameBufferInfo.attachments[0], 0)
+    twgl.bindFramebufferInfo(gl, rsmFrameBufferInfo)
+
+    gFrameBufferInfo = twgl.createFramebufferInfo(gl, [
+        { minMag: gl.NEAREST }, //normal
+        { minMag: gl.NEAREST }, //albedo
+        { minMag: gl.NEAREST } //world-space position
+    ], shadowDepthTextureSize, shadowDepthTextureSize)
     /*
         depth_cube_tex = twgl.createTexture(gl, {
             target: gl.TEXTURE_CUBE_MAP,
@@ -347,32 +375,6 @@ function init() {
     }
 
     // Mouse test
-    canvas.addEventListener("mouseover", (e) => {
-        canMove = true
-    })
-
-    canvas.addEventListener("mouseout", (e) => {
-        canMove = false
-    })
-
-    canvas.addEventListener("mousemove", (e) => {
-        var rect = canvas.getBoundingClientRect()
-        var currentX = e.clientX - rect.left
-        var currentY = e.clientY - rect.top
-        
-        vec2.add(previousMousePosition, [0,0], [e.movementX, e.movementY])
-        vec2.set(cameraMoveDirection, previousMousePosition[0],previousMousePosition[1])
-        vec2.normalize(cameraMoveDirection,cameraMoveDirection)
-        /*
-        if(vec2.distance(previousMousePosition, [400, 300]) > 50){
-            canMove = true
-        }else{
-            canMove = false
-        }
-        */
-        //console.log(cameraMoveDirection)
-    })
-
     canvas.addEventListener("mousedown", (e) => {
         var rect = canvas.getBoundingClientRect()
         //canvas.requestPointerLock()
@@ -385,21 +387,10 @@ function render(time) {
     time *= 0.001
     delta_time = time - previous_time
     previous_time = time
-    //console.log(delta_time)
+    
     twgl.resizeCanvasToDisplaySize(gl.canvas)
-    let world = m4.identity()
 
-    // Frame buffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer)
-    gl.viewport(0, 0, shadowDepthTextureSize, shadowDepthTextureSize)
-
-    gl.enable(gl.DEPTH_TEST)
-    gl.enable(gl.CULL_FACE)
-    gl.cullFace(gl.BACK)
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-
-    gl.useProgram(depthProgramInfo.program)
-
+    /* Setting the light */
     dirLight_uniforms = {
         "dirLight.dir": directional_light.forward,
         "dirLight.color": directional_light.color,
@@ -431,9 +422,23 @@ function render(time) {
     pointLight_uniforms = point_light.getNewUniform(pointLight_uniforms)
     /* Update the spot light uniform */
     spotLight_uniforms = spot_light.getNewUniform(spotLight_uniforms)
-    //spotLight_uniforms.spotLights_num = spotLight_uniforms.spotLights_power.length    // Update the number of spot light(s)
 
     let light_inv_dir = [-directional_light.forward[0], -directional_light.forward[1], -directional_light.forward[2], ]
+
+    let world = m4.identity()
+
+    /* Shadow mapping frame buffer 
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rsmFrameBufferInfo.framebuffer)
+    gl.viewport(0, 0, shadowDepthTextureSize, shadowDepthTextureSize)*/
+    twgl.bindFramebufferInfo(gl, rsmFrameBufferInfo)
+
+    gl.enable(gl.DEPTH_TEST)
+    gl.enable(gl.CULL_FACE)
+    gl.cullFace(gl.BACK)
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+    //gl.useProgram(depthProgramInfo.program)
+    gl.useProgram(rsmProgramInfo.program)
 
     let depth_M = m4.identity()
     let depth_P = m4.ortho(-10, 10, -10, 10, -10, 20)
@@ -454,18 +459,26 @@ function render(time) {
 
         depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
 
-        depth_uniforms.depthMVP = depth_MVP
+        //depth_uniforms.depthMVP = depth_MVP
         //depth_uniforms.depth_M = world
         //depth_uniforms.lightPos = point_light.position
+        rsm_uniforms["light_P"] = depth_P
+        rsm_uniforms["light_V"] = depth_V
+        rsm_uniforms["M"] = world
+        rsm_uniforms["color"] = element.material.diffuse
+        rsm_uniforms["N"] = m4.transpose(m4.inverse(m4.multiply(depth_V, depth_M)))
 
         bufferInfo = element.bufferInfo
-        twgl.setBuffersAndAttributes(gl, depthProgramInfo, bufferInfo)
-        twgl.setUniforms(depthProgramInfo, depth_uniforms)
+        twgl.setBuffersAndAttributes(gl, rsmProgramInfo, bufferInfo)
+        twgl.setUniforms(rsmProgramInfo, rsm_uniforms)
         twgl.drawBufferInfo(gl, bufferInfo)
-    })
 
-    // Phong shader
-    //gl.disable(gl.POLYGON_OFFSET_FILL)
+        //var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
+        //gl.readPixels(0, 0, 1024, 1024, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+        //console.log(pixels)
+    })
+    
+    /* Phong shader */
     gl.enable(gl.POLYGON_OFFSET_FILL)
     gl.polygonOffset(1.0, 2.0)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
@@ -475,7 +488,6 @@ function render(time) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     gl.useProgram(programInfo.program)
-    //gl.useProgram(bumpProgramInfo.program)
 
     // Camera Settings
     const camera_mat = m4.lookAt(camera.position, camera.forward, camera.up)
@@ -485,10 +497,11 @@ function render(time) {
     bump_uniforms.V = view
     bump_uniforms.P = camera.projection
     bump_uniforms.cam_pos = camera.position
-    bump_uniforms.depth_texture = depth_tex
+    //bump_uniforms.depth_texture = depth_tex
+    bump_uniforms.depth_texture = rsmFrameBufferInfo.attachments[0]
     //bump_uniforms.depth_cube_texture = depth_cube_tex
 
-    // Scene render pass
+    /* Scene render pass */
     object_list.forEach(element => {
         world = element.transformMatrix
 
@@ -503,6 +516,7 @@ function render(time) {
             mag: gl.NEAREST,
             src: element.textures[0]
         })
+
         if (element.recive_shadow) {
             depth_M = world
             depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
@@ -538,6 +552,7 @@ function render(time) {
 
     gl.useProgram(null)
 
+    /* Updating shit */
     update(delta_time)
     requestAnimationFrame(render)
 }

@@ -134,16 +134,17 @@ export class PointLightObject extends BasicLightObject {
         new_uniform[prefix+"_num"] += 1
         return new_uniform
     }
+    
     /*
     updateUniform(uniform, prefix = "pointLights"){
         //var new_uniform = uniform
 
-        uniform[prefix+"["+this.id+"].color"] = this.color
-        uniform[prefix+"["+this.id+"].position"] = this.position
-        uniform[prefix+"["+this.id+"].power"] = this.power
-        uniform[prefix+"["+this.id+"].linear"] = this.linear
-        uniform[prefix+"["+this.id+"].exp_factor"] = this.exp
-        uniform[prefix+"["+this.id+"].constant"] = this.constant
+        uniform[`${prefix}[${this.id}].color`] = this.color
+        uniform[`${prefix}[${this.id}].position`] = this.position
+        uniform[`${prefix}[${this.id}].power`] = this.power
+        uniform[`${prefix}[${this.id}].linear`] = this.linear
+        uniform[`${prefix}[${this.id}].exp_factor`] = this.exp
+        uniform[`${prefix}[${this.id}].constant`] = this.constant
     }
     */
 }
@@ -174,13 +175,12 @@ export class SpotLightObject extends PointLightObject {
     /*
     updateUniform(uniform, prefix = "spotLights"){
         super.getNewUniform(uniform, prefix)
-        uniform[prefix+"["+this.id+"].direction"] = this.direction
-        uniform[prefix+"["+this.id+"].cutoff"] = this.cutoff
+        uniform[`${prefix}[${this.id}].direction`] = this.direction
+        uniform[`${prefix}[${this.id}].cutoff`] = this.cutoff
         
     }
     */
 }
-
 
 export class BasicCameraObject extends BaseObject {
     constructor() {
