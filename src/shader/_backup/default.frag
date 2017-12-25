@@ -20,9 +20,6 @@ in mat4 v_M;
 
 uniform sampler2D texture_0;
 uniform sampler2D depth_texture;
-uniform sampler2D normal_texture;
-uniform sampler2D flux_texture;
-uniform sampler2D worldPos_texture;
 //uniform samplerCube depth_cube_texture;
 
 //uniform vec3 cam_pos;

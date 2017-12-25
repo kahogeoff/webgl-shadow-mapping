@@ -73,6 +73,7 @@ box.textures.push([
 let obj2 = new ModelObject()
 obj2.name = "Object2"
 obj2.position = v3.create(3, 3, 3)
+obj2.cast_shadow = false
 obj2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
 obj2.textures.push([
     16, 220, 220, 255,
@@ -82,47 +83,52 @@ obj2.textures.push([
 
 let floor = new ModelObject()
 floor.name = "Floor"
-floor.cast_shadow = false
+//floor.cast_shadow = false
 floor.material.shininess = 1
 floor.textures.push([
     24, 24, 255, 255,
 ])
+floor.material.flux = [ 0.1, 0.1, 0.9, 1.0]
 
 let g_wall = new ModelObject()
 g_wall.name = "Green Wall"
-g_wall.cast_shadow = false
+//g_wall.cast_shadow = false
 g_wall.position = v3.create(0, 5, 5)
 g_wall.rotation = v3.create(glMatrix.toRadian(-90), 0, 0)
 g_wall.textures.push([
     24, 180, 24, 255,
 ])
+g_wall.material.flux = [0.1, 0.9, 0.1, 1.0]
 
 let r_wall = new ModelObject()
 r_wall.name = "Red Wall"
-r_wall.cast_shadow = false
+//r_wall.cast_shadow = false
 r_wall.position = v3.create(5, 5, 0)
 r_wall.rotation = v3.create(0, 0, glMatrix.toRadian(90))
 r_wall.textures.push([
     180, 24, 24, 255,
 ])
+r_wall.material.flux = [ 0.9, 0.1, 0.1, 1.0]
 
 let g_wall_2 = new ModelObject()
 g_wall_2.name = "Green Wall 2"
-g_wall_2.cast_shadow = false
+//g_wall_2.cast_shadow = false
 g_wall_2.position = v3.create(0, 5, -5)
 g_wall_2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
 g_wall_2.textures.push([
     24, 180, 24, 255,
 ])
+g_wall_2.material.flux = [0.1, 0.9, 0.1, 1.0]
 
 let r_wall_2 = new ModelObject()
 r_wall_2.name = "Red Wall 2"
-r_wall_2.cast_shadow = false
+//r_wall_2.cast_shadow = false
 r_wall_2.position = v3.create(-5, 5, 0)
 r_wall_2.rotation = v3.create(0, 0, glMatrix.toRadian(-90))
 r_wall_2.textures.push([
     180, 24, 24, 255,
 ])
+r_wall_2.material.flux = [ 0.9, 0.1, 0.1, 1.0]
 
 // Set up a directional light
 let directional_light = new DirectionalLightObject()
@@ -160,6 +166,9 @@ camera.zFar = 300
 let object_list = []
 
 let depth_tex = {}
+let normal_tex = {}
+let flux_tex = {}
+let worldPos_tex = {}
 //let depth_cube_tex = []
 
 let bump_uniforms = {
@@ -220,6 +229,23 @@ let cameraMoveDirection = vec2.create()
 document.addEventListener("keydown", function (event) {
     if (event.keyCode == 32) {
         console.log(camera.rotation)
+        /*
+        var canvas = document.createElement("canvas")
+        canvas.width = 1024
+        canvas.height = 1024
+        var context = canvas.getContext('2d')
+    
+        // Copy the pixels to a 2D canvas
+        var imageData = context.createImageData(1024, 1024)
+        imageData.data.set(pixels)
+        context.putImageData(imageData, 0, 0)
+    
+        var img = new Image()
+        img.src = canvas.toDataURL()
+        console.log(img.src)
+        document.getElementById("test").src = img.src
+        console.log(pixels)
+        */
     }
 
     // Light position control
@@ -318,58 +344,24 @@ function init() {
     }
 
     // Set frame buffer
-    //frameBuffer = gl.createFramebuffer()
-    //gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer)
-
-    // Set depth texture
-    /*
-    depth_tex = twgl.createTexture(gl, {
-        width: shadowDepthTextureSize,
-        height: shadowDepthTextureSize,
-        minMag: gl.NEAREST,
-        internalFormat: gl.DEPTH_COMPONENT16,
-        format: gl.DEPTH_COMPONENT,
-        warp: gl.CLAMP_TO_EDGE
-    })
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_tex, 0)
-    */
-
-    //Frame buffer info for RSM
     rsmFrameBufferInfo = twgl.createFramebufferInfo(gl, [
-        {
-            minMag: gl.NEAREST,
-            internalFormat: gl.DEPTH_COMPONENT16,
-            format: gl.DEPTH_COMPONENT
-        }, //depth
-        { attach: gl.COLOR_ATTACHMENT0 + 1, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST }, //normal
-        { attach: gl.COLOR_ATTACHMENT0 + 2, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST }, //flux
-        { attach: gl.COLOR_ATTACHMENT0 + 3, internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT, minMag: gl.NEAREST } //world-space position
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
+        { internalFormat: gl.DEPTH_COMPONENT24, format: gl.DEPTH_COMPONENT }
     ], shadowDepthTextureSize, shadowDepthTextureSize)
-    //gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, rsmFrameBufferInfo.attachments[0], 0)
-    twgl.bindFramebufferInfo(gl, rsmFrameBufferInfo)
 
-    gFrameBufferInfo = twgl.createFramebufferInfo(gl, [
-        { minMag: gl.NEAREST }, //normal
-        { minMag: gl.NEAREST }, //albedo
-        { minMag: gl.NEAREST } //world-space position
-    ], shadowDepthTextureSize, shadowDepthTextureSize)
-    /*
-        depth_cube_tex = twgl.createTexture(gl, {
-            target: gl.TEXTURE_CUBE_MAP,
-            width: shadowDepthTextureSize,
-            height: shadowDepthTextureSize,
-            minMag: gl.NEAREST,
-            internalFormat: gl.DEPTH_COMPONENT16,
-            format: gl.DEPTH_COMPONENT,
-            warp: gl.CLAMP_TO_EDGE
-        })
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_X, depth_cube_tex, 0)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, depth_cube_tex, 0)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, depth_cube_tex, 0)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, depth_cube_tex, 0)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, depth_cube_tex, 0)
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, depth_cube_tex, 0)
-    */
+    gl.bindFramebuffer(gl.FRAMEBUFFER, rsmFrameBufferInfo.framebuffer)
+    gl.drawBuffers([
+        gl.COLOR_ATTACHMENT0,
+        gl.COLOR_ATTACHMENT1,
+        gl.COLOR_ATTACHMENT2,
+        gl.COLOR_ATTACHMENT3
+    ])
+    
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE) {
         return false
     }
@@ -381,7 +373,7 @@ function init() {
         console.log((e.clientX - rect.left) + ", " + (e.clientY - rect.top))
     })
 }
-
+//var pixels
 function render(time) {
 
     time *= 0.001
@@ -427,14 +419,13 @@ function render(time) {
 
     let world = m4.identity()
 
-    /* Shadow mapping frame buffer 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, rsmFrameBufferInfo.framebuffer)
-    gl.viewport(0, 0, shadowDepthTextureSize, shadowDepthTextureSize)*/
+    /* Shadow mapping frame buffer */
     twgl.bindFramebufferInfo(gl, rsmFrameBufferInfo)
-
+    
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.CULL_FACE)
     gl.cullFace(gl.BACK)
+    
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     //gl.useProgram(depthProgramInfo.program)
@@ -465,7 +456,7 @@ function render(time) {
         rsm_uniforms["light_P"] = depth_P
         rsm_uniforms["light_V"] = depth_V
         rsm_uniforms["M"] = world
-        rsm_uniforms["color"] = element.material.diffuse
+        rsm_uniforms["color"] = element.material.flux
         rsm_uniforms["N"] = m4.transpose(m4.inverse(m4.multiply(depth_V, depth_M)))
 
         bufferInfo = element.bufferInfo
@@ -473,11 +464,14 @@ function render(time) {
         twgl.setUniforms(rsmProgramInfo, rsm_uniforms)
         twgl.drawBufferInfo(gl, bufferInfo)
 
-        //var pixels = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4)
-        //gl.readPixels(0, 0, 1024, 1024, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
         //console.log(pixels)
     })
-    
+    /*
+    gl.readBuffer(gl.COLOR_ATTACHMENT1)
+    pixels = new Float32Array(1024 * 1024 * 4)
+    gl.readPixels(0, 0, 1024, 1024, gl.RGBA, gl.FLOAT, pixels)
+    */
+
     /* Phong shader */
     gl.enable(gl.POLYGON_OFFSET_FILL)
     gl.polygonOffset(1.0, 2.0)
@@ -497,8 +491,12 @@ function render(time) {
     bump_uniforms.V = view
     bump_uniforms.P = camera.projection
     bump_uniforms.cam_pos = camera.position
-    //bump_uniforms.depth_texture = depth_tex
+
+    // RSM texture
     bump_uniforms.depth_texture = rsmFrameBufferInfo.attachments[0]
+    bump_uniforms.normal_texture = rsmFrameBufferInfo.attachments[1]
+    bump_uniforms.flux_texture = rsmFrameBufferInfo.attachments[2]
+    bump_uniforms.worldPos_texture = rsmFrameBufferInfo.attachments[3]
     //bump_uniforms.depth_cube_texture = depth_cube_tex
 
     /* Scene render pass */
@@ -512,10 +510,9 @@ function render(time) {
         bump_uniforms.specular_color = element.material.specular
         bump_uniforms.shininess = element.material.shininess
         bump_uniforms.texture_0 = twgl.createTexture(gl, {
-            min: gl.NEAREST,
-            mag: gl.NEAREST,
+            minMag: gl.NEAREST,
             src: element.textures[0]
-        })
+        }) // rsmFrameBufferInfo.attachments[0] 
 
         if (element.recive_shadow) {
             depth_M = world

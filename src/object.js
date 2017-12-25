@@ -59,6 +59,7 @@ export class ModelObject extends BaseObject {
             diffuse: [1, 1, 1, 1],
             ambient: [0.1, 0.1, 0.1, 1],
             specular: [1, 1, 1, 1],
+            flux: [1, 1, 1, 1],    // Lazy flux
             shininess: 8,
         }
         this.bufferInfo = undefined

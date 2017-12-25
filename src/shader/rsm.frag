@@ -14,7 +14,7 @@ layout(location = 2) out vec4 fluxTex;
 layout(location = 3) out vec4 worldPosTex;
 
 void main(){
-    depthTex = vec4(vec3(v_position.z), 1.0);
+    depthTex = vec4(vec3(gl_FragCoord.z), 1.0);
     normalTex = vec4(vec3(v_normal.xyz), 1.0);
     fluxTex = vec4(vec3(color.xyz), 1.0);
     worldPosTex = vec4(vec3(v_worldPosition.xyz), 1.0);
