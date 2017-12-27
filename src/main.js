@@ -39,10 +39,11 @@ let programInfo = undefined
 let rsmProgramInfo = undefined
 let lightHintProgramInfo = undefined
 
-
 let bufferInfo = undefined
 let rsmFrameBufferInfo = undefined
 let gFrameBufferInfo = undefined
+
+let samplesTexture = undefined
 
 let frameBuffer = undefined
 //let renderBufferID = undefined
@@ -344,6 +345,48 @@ function init() {
     }
 
     // Set frame buffer
+    // Make a samples texture
+    const NUMBER_SAMPLES = 32
+    let samples = []
+    for(var i = 0; i< NUMBER_SAMPLES; i++){
+        let xi1 = Math.random()
+        let xi2 = Math.random()
+
+        let x = xi1 * Math.sin(2 * Math.PI * xi2)
+        let y = xi1 * Math.cos(2 * Math.PI * xi2)
+
+        samples.push([x, y, xi1])
+    }
+    let SAMPLES_TEX_SIZE = 1
+    while (SAMPLES_TEX_SIZE < NUMBER_SAMPLES){
+        SAMPLES_TEX_SIZE *= 2
+    }
+    let dat = []
+    for (var i = 0; i < SAMPLES_TEX_SIZE; i++){
+        var p
+        if ( i < NUMBER_SAMPLES){
+            p = samples[i]
+        }else{
+            p = [0.0, 0.0, 0.0]
+        }
+
+        dat.push(p[0])
+        dat.push(p[1])
+        dat.push(p[2])
+        dat.push(0.0)
+    }
+
+    samplesTexture = twgl.createTexture(gl, {
+        width: SAMPLES_TEX_SIZE,
+        height: 1,
+        minMag: gl.NEAREST,
+        internalFormat: gl.RGBA32F, 
+        format: gl.RGBA, 
+        type: gl.FLOAT,
+        src: dat
+    })
+    console.log(dat)
+
     rsmFrameBufferInfo = twgl.createFramebufferInfo(gl, [
         { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
         { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
@@ -497,6 +540,7 @@ function render(time) {
     bump_uniforms.normal_texture = rsmFrameBufferInfo.attachments[1]
     bump_uniforms.flux_texture = rsmFrameBufferInfo.attachments[2]
     bump_uniforms.worldPos_texture = rsmFrameBufferInfo.attachments[3]
+    bump_uniforms.samples_texture = samplesTexture
     //bump_uniforms.depth_cube_texture = depth_cube_tex
 
     /* Scene render pass */
@@ -517,6 +561,8 @@ function render(time) {
         if (element.recive_shadow) {
             depth_M = world
             depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
+            bump_uniforms.light_P = depth_P
+            bump_uniforms.light_V = depth_V
             bump_uniforms.depthBiasMVP = m4.multiply(bias_matrix, depth_MVP)
         }
 

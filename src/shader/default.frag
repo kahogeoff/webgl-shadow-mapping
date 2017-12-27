@@ -1,6 +1,7 @@
 #version 300 es
 #define MAX_POINT_LIGHTS 16
 #define MAX_SPOT_LIGHTS 16
+#define NUMBER_SAMPLES 32
 
 precision mediump float;
 
@@ -23,6 +24,7 @@ uniform sampler2D depth_texture;
 uniform sampler2D normal_texture;
 uniform sampler2D flux_texture;
 uniform sampler2D worldPos_texture;
+uniform sampler2D samples_texture;
 //uniform samplerCube depth_cube_texture;
 
 //uniform vec3 cam_pos;
@@ -38,7 +40,6 @@ uniform vec4 ambient_color;
 uniform vec4 specular_color;
 uniform float shininess;
 
-uniform int pointLights_num;
 /*
 struct PointLight{
 	vec3 position;
@@ -50,6 +51,7 @@ struct PointLight{
 };
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 */
+uniform int pointLights_num;
 uniform vec4 pointLights_color[MAX_POINT_LIGHTS];
 uniform vec3 pointLights_position[MAX_POINT_LIGHTS];
 uniform float pointLights_power[MAX_POINT_LIGHTS];
@@ -57,6 +59,19 @@ uniform float pointLights_constant[MAX_POINT_LIGHTS];
 uniform float pointLights_linear[MAX_POINT_LIGHTS];
 uniform float pointLights_exp[MAX_POINT_LIGHTS];
 
+/*
+struct SpotLight{
+	vec3 position;
+	vec3 direction;
+	vec4 color;
+	float power;
+	float cutoff;
+	float constant;
+	float linear;
+	float exp_factor;
+};
+uniform SpotLight sointLights[MAX_SPOT_LIGHTS];
+*/
 uniform int spotLights_num;
 uniform vec4 spotLights_color[MAX_SPOT_LIGHTS];
 uniform vec3 spotLights_position[MAX_SPOT_LIGHTS];
@@ -66,6 +81,10 @@ uniform float spotLights_cutoff[MAX_SPOT_LIGHTS];
 uniform float spotLights_constant[MAX_SPOT_LIGHTS];
 uniform float spotLights_linear[MAX_SPOT_LIGHTS];
 uniform float spotLights_exp[MAX_SPOT_LIGHTS];
+
+uniform mat4 light_P;
+uniform mat4 light_V;
+
 out vec4 outColor;
 
 const vec2 poissonDisk[4] = vec2[](
@@ -198,6 +217,11 @@ void main()
 	for (int i = 0; i < spotLights_num; i++){
 		totalColor += CalcSpotLight(i, v_normal);
 	}
+
+	vec3 indirect_factor = vec3(0.0, 0.0, 0.0);
+	vec3 P = texture2D(worldPos_texture, v_texcoord).xyz;
+	vec3 N = texture2D(normal_texture, v_texcoord).xyz;
+	vec4 texPos = light_P * light_V * vec4(P, 1.0);
 
 	outColor = texColor * totalColor;
 
