@@ -2,6 +2,8 @@
 #define MAX_POINT_LIGHTS 16
 #define MAX_SPOT_LIGHTS 16
 #define NUMBER_SAMPLES 32
+#define SAMPLES_TEX_SIZE 128
+#define texelSize 1.0 / 1024.0
 
 precision mediump float;
 
@@ -131,6 +133,7 @@ vec4 CalcDirectionalLight(vec3 normal)
 
 	float diffuse_factor = clamp(dot(n, -l), 0.0, 1.0);
 	float visibility = 1.0;
+	
 	/* Shadow mapping */
 	float bias = 0.001 * tan(acos(diffuse_factor));
 	bias = clamp(bias, 0.0, 0.005);
@@ -205,6 +208,38 @@ vec4 CalcSpotLight(int index, vec3 normal)
 	}
 }
 
+vec3 getIndirectLighting(){
+	vec3 P = texture(worldPos_texture, v_texcoord).xyz;
+	vec3 N = texture(normal_texture, v_texcoord).xyz;
+	vec4 texPos = light_P * light_V * vec4(P, 1.0);
+	vec3 indirect_factor = vec3(0.0, 0.0, 0.0);
+	texPos.xyz = texPos.xyz * 0.5 + 0.5;
+
+	float sampleRadius = 300.0;
+
+	for(int i = 0; i < NUMBER_SAMPLES; i++){
+		vec3 s = texture(samples_texture, vec2( float(i) / float(SAMPLES_TEX_SIZE), 0.0 )).xyz;
+		vec2 offset = s.xy;
+		float weight = s.z;
+
+		vec2 coords = texPos.xy + offset * sampleRadius * texelSize;
+
+		vec3 vplPos = texture(worldPos_texture, coords).xyz;
+		vec3 vplNormal = texture(normal_texture, coords).xyz;
+		vec3 vplFlux = texture(flux_texture, coords).xyz;
+
+		vec3 result = vplFlux * (
+			max(0.0, dot( vplNormal, normalize(P - vplPos)))
+			* max(0.0, dot( N, normalize(vplPos - P)))
+		);
+
+		result *= weight * weight;
+      	result *= (1.0 / float(NUMBER_SAMPLES));
+		indirect_factor += result;
+	}
+	return clamp(indirect_factor * 3.0, 0.0, 1.0);
+}
+
 void main()
 {
 	vec4 totalColor = CalcDirectionalLight(v_normal);
@@ -218,19 +253,6 @@ void main()
 		totalColor += CalcSpotLight(i, v_normal);
 	}
 
-	vec3 indirect_factor = vec3(0.0, 0.0, 0.0);
-	vec3 P = texture2D(worldPos_texture, v_texcoord).xyz;
-	vec3 N = texture2D(normal_texture, v_texcoord).xyz;
-	vec4 texPos = light_P * light_V * vec4(P, 1.0);
-
-	outColor = texColor * totalColor;
-
-	/*
-		ambient_color * diffuse_color *  texColor +
-		dirLight_color * dirLight_power * visibility * (
-			+ diffuse_color * texColor * lambertian
-			+ specular_color * specular
-		) / (v_light_dist * v_light_dist);
-	*/
+	outColor = texColor * totalColor ;
 	
 }
