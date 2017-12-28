@@ -25,28 +25,31 @@ let glTFLoader = new MinimalGLTFLoader.glTFLoader()
 
 const shadowDepthTextureSize = 1024
 
+// Import shaders
 let defaultVertex = require("./shader/default.vert")
 let defaultFragment = require("./shader/default.frag")
 let lightHintVertex = require("./shader/light_hint.vert")
 let lightHintFragment = require("./shader/light_hint.frag")
-let depthVertex = require("./shader/depth.vert")
-let depthFragment = require("./shader/depth.frag")
 let rsmVertex = require("./shader/rsm.vert")
 let rsmFragment = require("./shader/rsm.frag")
+let indirectLightingFragment = require("./shader/indirect_lighting.frag")
+let directLightingFragment = require("./shader/direct_lighting.frag")
+let fullScreenVertex = require("./shader/full_screen.vert")
 
+// Shader Programs
 let programInfo = undefined
-//let depthProgramInfo = undefined
 let rsmProgramInfo = undefined
+let indirectLightingProgramInfo = undefined
+let directLightingProgramInfo = undefined
 let lightHintProgramInfo = undefined
 
 let bufferInfo = undefined
+
+// Frame buffers
 let rsmFrameBufferInfo = undefined
 let gFrameBufferInfo = undefined
 
 let samplesTexture = undefined
-
-let frameBuffer = undefined
-//let renderBufferID = undefined
 
 // Set up a box
 let box = new ModelObject()
@@ -59,6 +62,7 @@ box.model_data = {
 }
 box.position = v3.create(0, 1, 0)
 box.rotation = v3.create(0, glMatrix.toRadian(45), 0)
+box.material.do_reflection = false
 box.textures.push([
     255, 255, 255, 255,
     192, 192, 192, 255,
@@ -74,7 +78,8 @@ box.textures.push([
 let obj2 = new ModelObject()
 obj2.name = "Object2"
 obj2.position = v3.create(3, 3, 3)
-obj2.cast_shadow = false
+//obj2.cast_shadow = false
+obj2.material.do_reflection = false
 obj2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
 obj2.textures.push([
     16, 220, 220, 255,
@@ -89,7 +94,7 @@ floor.material.shininess = 1
 floor.textures.push([
     24, 24, 255, 255,
 ])
-floor.material.flux = [ 0.1, 0.1, 0.9, 1.0]
+floor.material.flux = [0.1, 0.1, 0.9, 1.0]
 
 let g_wall = new ModelObject()
 g_wall.name = "Green Wall"
@@ -109,7 +114,7 @@ r_wall.rotation = v3.create(0, 0, glMatrix.toRadian(90))
 r_wall.textures.push([
     180, 24, 24, 255,
 ])
-r_wall.material.flux = [ 0.9, 0.1, 0.1, 1.0]
+r_wall.material.flux = [0.9, 0.1, 0.1, 1.0]
 
 let g_wall_2 = new ModelObject()
 g_wall_2.name = "Green Wall 2"
@@ -129,7 +134,7 @@ r_wall_2.rotation = v3.create(0, 0, glMatrix.toRadian(-90))
 r_wall_2.textures.push([
     180, 24, 24, 255,
 ])
-r_wall_2.material.flux = [ 0.9, 0.1, 0.1, 1.0]
+r_wall_2.material.flux = [0.9, 0.1, 0.1, 1.0]
 
 // Set up a directional light
 let directional_light = new DirectionalLightObject()
@@ -142,7 +147,7 @@ let point_light = new PointLightObject()
 point_light.name = "MyLittlePointLight"
 point_light.position = v3.create(1, 2.5, 1)
 point_light.color = [0.9, 0.9, 0.1, 1]
-point_light.power = 2
+point_light.power = 0
 point_light.exp = 0.6
 /**/
 
@@ -151,7 +156,7 @@ let spot_light = new SpotLightObject()
 spot_light.name = "MyLittleSpotLight"
 spot_light.position = v3.create(1, 1, -1)
 spot_light.color = [0.9, 0.1, 0.1, 1]
-spot_light.power = 4
+spot_light.power = 0
 spot_light.exp = 0.6
 spot_light.cutoff = 0.9
 /**/
@@ -211,6 +216,8 @@ let spotLight_uniforms = {
 let depth_uniforms = {}
 let light_hint_uniforms = {}
 let rsm_uniforms = {}
+let direct_lighting_uniforms = {}
+let indirect_lighting_uniforms = {}
 
 let previous_time = 0
 let delta_time = 0
@@ -230,23 +237,6 @@ let cameraMoveDirection = vec2.create()
 document.addEventListener("keydown", function (event) {
     if (event.keyCode == 32) {
         console.log(camera.rotation)
-        /*
-        var canvas = document.createElement("canvas")
-        canvas.width = 1024
-        canvas.height = 1024
-        var context = canvas.getContext('2d')
-    
-        // Copy the pixels to a 2D canvas
-        var imageData = context.createImageData(1024, 1024)
-        imageData.data.set(pixels)
-        context.putImageData(imageData, 0, 0)
-    
-        var img = new Image()
-        img.src = canvas.toDataURL()
-        console.log(img.src)
-        document.getElementById("test").src = img.src
-        console.log(pixels)
-        */
     }
 
     // Light position control
@@ -304,8 +294,9 @@ function init() {
     twgl.addExtensionsToContext(gl)
 
     programInfo = twgl.createProgramInfo(gl, [defaultVertex, defaultFragment])
-    //depthProgramInfo = twgl.createProgramInfo(gl, [depthVertex, depthFragment])
     rsmProgramInfo = twgl.createProgramInfo(gl, [rsmVertex, rsmFragment])
+    directLightingProgramInfo = twgl.createProgramInfo(gl, [fullScreenVertex, directLightingFragment])
+    indirectLightingProgramInfo = twgl.createProgramInfo(gl, [fullScreenVertex, indirectLightingFragment])
     lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
     //console.log(bufferInfo)
 
@@ -344,11 +335,10 @@ function init() {
         uniform_MVP: m4.identity()
     }
 
-    // Set frame buffer
     // Make a samples texture
-    const NUMBER_SAMPLES = 32
+    const NUMBER_SAMPLES = 128
     let samples = []
-    for(var i = 0; i< NUMBER_SAMPLES; i++){
+    for (var i = 0; i < NUMBER_SAMPLES; i++) {
         let xi1 = Math.random()
         let xi2 = Math.random()
 
@@ -358,41 +348,63 @@ function init() {
         samples.push([x, y, xi1])
     }
     let SAMPLES_TEX_SIZE = 1
-    while (SAMPLES_TEX_SIZE < NUMBER_SAMPLES){
+    while (SAMPLES_TEX_SIZE < NUMBER_SAMPLES) {
         SAMPLES_TEX_SIZE *= 2
     }
+
+    indirect_lighting_uniforms["NUMBER_SAMPLES"] = NUMBER_SAMPLES
+    indirect_lighting_uniforms["SAMPLES_TEX_SIZE"] = SAMPLES_TEX_SIZE
+
     let dat = []
-    for (var i = 0; i < SAMPLES_TEX_SIZE; i++){
+    for (var i = 0; i < SAMPLES_TEX_SIZE; i++) {
         var p
-        if ( i < NUMBER_SAMPLES){
+        if (i < NUMBER_SAMPLES) {
             p = samples[i]
-        }else{
+        } else {
             p = [0.0, 0.0, 0.0]
         }
 
         dat.push(p[0])
         dat.push(p[1])
         dat.push(p[2])
-        dat.push(0.0)
+        dat.push(1.0)
     }
 
+    // Set rsm frame buffer
     samplesTexture = twgl.createTexture(gl, {
         width: SAMPLES_TEX_SIZE,
         height: 1,
         minMag: gl.NEAREST,
-        internalFormat: gl.RGBA32F, 
-        format: gl.RGBA, 
+        internalFormat: gl.RGBA32F,
+        format: gl.RGBA,
         type: gl.FLOAT,
         src: dat
     })
-    console.log(dat)
 
-    rsmFrameBufferInfo = twgl.createFramebufferInfo(gl, [
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },
-        { internalFormat: gl.DEPTH_COMPONENT24, format: gl.DEPTH_COMPONENT }
+    rsmFrameBufferInfo = twgl.createFramebufferInfo(gl, [{
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //depth
+        {
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //normal
+        {
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //flux
+        {
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //world position
+        {
+            internalFormat: gl.DEPTH_COMPONENT24,
+            format: gl.DEPTH_COMPONENT
+        }   //Enable depth
     ], shadowDepthTextureSize, shadowDepthTextureSize)
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, rsmFrameBufferInfo.framebuffer)
@@ -402,9 +414,30 @@ function init() {
         gl.COLOR_ATTACHMENT2,
         gl.COLOR_ATTACHMENT3
     ])
-    
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
+    // Set a geometry frame buffer
+    gFrameBufferInfo = twgl.createFramebufferInfo(gl, [
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //color
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //normal
+        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //world position 
+        {
+            internalFormat: gl.DEPTH_COMPONENT24,
+            format: gl.DEPTH_COMPONENT
+        }
+    ], canvas.width, canvas.height)
+    
+    gl.bindFramebuffer(gl.FRAMEBUFFER, gFrameBufferInfo.framebuffer)
+    gl.drawBuffers([
+        gl.COLOR_ATTACHMENT0,
+        gl.COLOR_ATTACHMENT1,
+        gl.COLOR_ATTACHMENT2
+    ])
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
+    // Check frame buffer complete
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE) {
         return false
     }
@@ -422,7 +455,7 @@ function render(time) {
     time *= 0.001
     delta_time = time - previous_time
     previous_time = time
-    
+
     twgl.resizeCanvasToDisplaySize(gl.canvas)
 
     /* Setting the light */
@@ -464,11 +497,11 @@ function render(time) {
 
     /* Shadow mapping frame buffer */
     twgl.bindFramebufferInfo(gl, rsmFrameBufferInfo)
-    
+
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.CULL_FACE)
     gl.cullFace(gl.BACK)
-    
+
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
     //gl.useProgram(depthProgramInfo.program)
@@ -493,11 +526,9 @@ function render(time) {
 
         depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
 
-        //depth_uniforms.depthMVP = depth_MVP
-        //depth_uniforms.depth_M = world
-        //depth_uniforms.lightPos = point_light.position
         rsm_uniforms["light_P"] = depth_P
         rsm_uniforms["light_V"] = depth_V
+        rsm_uniforms["do_reflection"] = element.material.do_reflection
         rsm_uniforms["M"] = world
         rsm_uniforms["color"] = element.material.flux
         rsm_uniforms["N"] = m4.transpose(m4.inverse(m4.multiply(depth_V, depth_M)))
@@ -509,16 +540,12 @@ function render(time) {
 
         //console.log(pixels)
     })
-    /*
-    gl.readBuffer(gl.COLOR_ATTACHMENT1)
-    pixels = new Float32Array(1024 * 1024 * 4)
-    gl.readPixels(0, 0, 1024, 1024, gl.RGBA, gl.FLOAT, pixels)
-    */
-
+    
     /* Phong shader */
     gl.enable(gl.POLYGON_OFFSET_FILL)
     gl.polygonOffset(1.0, 2.0)
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    twgl.bindFramebufferInfo(gl, gFrameBufferInfo)
+    //gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     gl.viewport(0, 0, canvas.width, canvas.height)
 
     gl.cullFace(gl.BACK)
@@ -537,10 +564,6 @@ function render(time) {
 
     // RSM texture
     bump_uniforms.depth_texture = rsmFrameBufferInfo.attachments[0]
-    bump_uniforms.normal_texture = rsmFrameBufferInfo.attachments[1]
-    bump_uniforms.flux_texture = rsmFrameBufferInfo.attachments[2]
-    bump_uniforms.worldPos_texture = rsmFrameBufferInfo.attachments[3]
-    bump_uniforms.samples_texture = samplesTexture
     //bump_uniforms.depth_cube_texture = depth_cube_tex
 
     /* Scene render pass */
@@ -592,7 +615,47 @@ function render(time) {
     twgl.setBuffersAndAttributes(gl, lightHintProgramInfo, bufferInfo)
     twgl.setUniforms(lightHintProgramInfo, light_hint_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
+    
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
+    // Draw scene
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
+    
+    gl.useProgram(directLightingProgramInfo.program)
+
+    direct_lighting_uniforms = {
+        color_texture: gFrameBufferInfo.attachments[0]
+    }
+
+    bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
+    twgl.setBuffersAndAttributes(gl, directLightingProgramInfo, bufferInfo)
+    twgl.setUniforms(directLightingProgramInfo, direct_lighting_uniforms)
+    twgl.drawBufferInfo(gl, bufferInfo)
+    
+    
+    gl.useProgram(indirectLightingProgramInfo.program)
+
+    indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
+    indirect_lighting_uniforms["g_worldPos_texture"] = gFrameBufferInfo.attachments[2]
+    
+    indirect_lighting_uniforms["depth_texture"] = rsmFrameBufferInfo.attachments[0],
+    indirect_lighting_uniforms["normal_texture"] = rsmFrameBufferInfo.attachments[1]
+    indirect_lighting_uniforms["flux_texture"] = rsmFrameBufferInfo.attachments[2]
+    indirect_lighting_uniforms["worldPos_texture"] = rsmFrameBufferInfo.attachments[3]
+    
+    indirect_lighting_uniforms["samples_texture"] = samplesTexture
+
+    indirect_lighting_uniforms["light_P"] = depth_P
+    indirect_lighting_uniforms["light_V"] = depth_V
+
+    bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
+    twgl.setBuffersAndAttributes(gl, indirectLightingProgramInfo, bufferInfo)
+    twgl.setUniforms(indirectLightingProgramInfo, indirect_lighting_uniforms)
+    twgl.drawBufferInfo(gl, bufferInfo)
+    
+    gl.disable(gl.BLEND)
+    
     gl.useProgram(null)
 
     /* Updating shit */
@@ -627,17 +690,17 @@ function start() {
 }
 
 function update(dt) {
-    
+
     obj2.rotate([dt, 0, 0])
     spot_light.rotate([0, dt, 0])
-    directional_light.rotate([0, -dt/2, 0])
+    directional_light.rotate([0, -dt / 4, 0])
 
-    if(canMove){
+    if (canMove) {
         //camera.rotate([-cameraMoveDirection[1]* dt, -cameraMoveDirection[0]* dt, 0])
-        if(vec2.length(cameraMoveDirection) > 0 ){
+        if (vec2.length(cameraMoveDirection) > 0) {
             //vec2.sub(cameraMoveDirection, cameraMoveDirection , [cameraMoveDirection[0] * dt, cameraMoveDirection[1] * dt])
         }
-        
+
     }
 }
 

@@ -1,9 +1,6 @@
 #version 300 es
 #define MAX_POINT_LIGHTS 16
 #define MAX_SPOT_LIGHTS 16
-#define NUMBER_SAMPLES 32
-#define SAMPLES_TEX_SIZE 128
-#define texelSize 1.0 / 1024.0
 
 precision mediump float;
 
@@ -12,8 +9,6 @@ in vec3 v_normal;
 in vec2 v_texcoord;
 in vec4 v_shadowcoord;
 
-//in vec3 v_lightToEye_cam_dir;
-//in vec3 v_eye_cam_dir;
 in vec3 v_worldPos;
 in vec3 v_worldCamPos;
 
@@ -23,13 +18,8 @@ in mat4 v_M;
 
 uniform sampler2D texture_0;
 uniform sampler2D depth_texture;
-uniform sampler2D normal_texture;
-uniform sampler2D flux_texture;
-uniform sampler2D worldPos_texture;
-uniform sampler2D samples_texture;
 //uniform samplerCube depth_cube_texture;
 
-//uniform vec3 cam_pos;
 struct DirectionalLight {
 	vec3 dir;
 	vec4 color;
@@ -87,7 +77,9 @@ uniform float spotLights_exp[MAX_SPOT_LIGHTS];
 uniform mat4 light_P;
 uniform mat4 light_V;
 
-out vec4 outColor;
+layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 normalTex;
+layout(location = 2) out vec4 worldPosTex;
 
 const vec2 poissonDisk[4] = vec2[](
    	vec2( -0.94201624, -0.39906216 ), 
@@ -208,38 +200,6 @@ vec4 CalcSpotLight(int index, vec3 normal)
 	}
 }
 
-vec3 getIndirectLighting(){
-	vec3 P = texture(worldPos_texture, v_texcoord).xyz;
-	vec3 N = texture(normal_texture, v_texcoord).xyz;
-	vec4 texPos = light_P * light_V * vec4(P, 1.0);
-	vec3 indirect_factor = vec3(0.0, 0.0, 0.0);
-	texPos.xyz = texPos.xyz * 0.5 + 0.5;
-
-	float sampleRadius = 300.0;
-
-	for(int i = 0; i < NUMBER_SAMPLES; i++){
-		vec3 s = texture(samples_texture, vec2( float(i) / float(SAMPLES_TEX_SIZE), 0.0 )).xyz;
-		vec2 offset = s.xy;
-		float weight = s.z;
-
-		vec2 coords = texPos.xy + offset * sampleRadius * texelSize;
-
-		vec3 vplPos = texture(worldPos_texture, coords).xyz;
-		vec3 vplNormal = texture(normal_texture, coords).xyz;
-		vec3 vplFlux = texture(flux_texture, coords).xyz;
-
-		vec3 result = vplFlux * (
-			max(0.0, dot( vplNormal, normalize(P - vplPos)))
-			* max(0.0, dot( N, normalize(vplPos - P)))
-		);
-
-		result *= weight * weight;
-      	result *= (1.0 / float(NUMBER_SAMPLES));
-		indirect_factor += result;
-	}
-	return clamp(indirect_factor * 3.0, 0.0, 1.0);
-}
-
 void main()
 {
 	vec4 totalColor = CalcDirectionalLight(v_normal);
@@ -254,5 +214,7 @@ void main()
 	}
 
 	outColor = texColor * totalColor ;
+    normalTex = vec4(vec3(v_normal.xyz), 1.0);
+    worldPosTex = vec4(vec3(v_worldPos), 1.0);
 	
 }

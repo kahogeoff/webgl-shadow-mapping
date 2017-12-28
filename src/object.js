@@ -56,6 +56,7 @@ export class ModelObject extends BaseObject {
         }
         this.textures = []
         this.material = {
+            do_reflection: true,
             diffuse: [1, 1, 1, 1],
             ambient: [0.1, 0.1, 0.1, 1],
             specular: [1, 1, 1, 1],
