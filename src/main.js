@@ -517,6 +517,8 @@ function render(time) {
     let depth_MVP = m4.identity()
 
     // Shadow pass (Directional light)
+    rsm_uniforms["light_P"] = depth_P
+    rsm_uniforms["light_V"] = depth_V
     object_list.forEach(element => {
         if (!element.cast_shadow) {
             return
@@ -525,9 +527,6 @@ function render(time) {
         depth_M = world
 
         depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
-
-        rsm_uniforms["light_P"] = depth_P
-        rsm_uniforms["light_V"] = depth_V
         rsm_uniforms["do_reflection"] = element.material.do_reflection
         rsm_uniforms["M"] = world
         rsm_uniforms["color"] = element.material.flux
@@ -619,8 +618,8 @@ function render(time) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
     // Draw scene
-    gl.enable(gl.BLEND)
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
+    //gl.enable(gl.BLEND)
+    //gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
     
     gl.useProgram(directLightingProgramInfo.program)
 

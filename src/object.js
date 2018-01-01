@@ -1,6 +1,8 @@
 import * as twgl from "twgl.js"
 import * as MinimalGLTFLoader from "minimal-gltf-loader"
-import { vec3 } from "gl-matrix"
+import {
+    vec3
+} from "gl-matrix"
 //import { vec3 } from "gl-matrix"
 const m4 = twgl.m4
 const v3 = twgl.v3
@@ -60,7 +62,7 @@ export class ModelObject extends BaseObject {
             diffuse: [1, 1, 1, 1],
             ambient: [0.1, 0.1, 0.1, 1],
             specular: [1, 1, 1, 1],
-            flux: [1, 1, 1, 1],    // Lazy flux
+            flux: [1, 1, 1, 1], // Lazy flux
             shininess: 8,
         }
         this.bufferInfo = undefined
@@ -68,22 +70,30 @@ export class ModelObject extends BaseObject {
         this.cast_shadow = true
         this.recive_shadow = true
         //this.shaderProgramInfo = {}
-        /*
-        glTFLoader.loadGLTF( file_path, ( glTF ) =>
-            this.setUpGLTF( glTF )
-        )
-        */
+        let file_path = "assets/Box/Box.gltf"
+        glTFLoader.loadGLTF(file_path, (glTF) => {
+            this.setUpGLTF(glTF)
+            console.log(glTF)
+        })
+
     }
-    /*
-    setUpGLTF( glTF ){
+
+    setUpGLTF(glTF) {
         var i = 0
         var current_scene = glTF.scenes[glTF.defaultScene]
         var tmp_v3_translate = v3.create()
 
-        var mesh
+        for (var mid = 0, meshes_num = glTF.meshes.length; mid < meshes_num; mid++){
+            var mesh = glTF.meshes[mid]
+
+            for(var i = 0, len = mesh.primitives.length; i < len; ++i){
+                var primitive = mesh.primitives[i]
+                
+            }
+        }
         
     }
-    */
+
 }
 
 export class BasicLightObject extends BaseObject {
@@ -98,7 +108,7 @@ export class BasicLightObject extends BaseObject {
 }
 
 export class DirectionalLightObject extends BasicLightObject {
-    
+
     constructor() {
         super()
         this.name = "DirectionalLight"
@@ -125,18 +135,18 @@ export class PointLightObject extends BasicLightObject {
 
     }
 
-    getNewUniform(uniform, prefix/*: string*/= "pointLights"){
+    getNewUniform(uniform, prefix /*: string*/ = "pointLights") {
         var new_uniform = uniform
-        new_uniform[prefix+"_color"] = new_uniform[prefix+"_color"].concat(this.color)
-        new_uniform[prefix+"_position"] = new_uniform[prefix+"_position"].concat(Array.from(this.position))
-        new_uniform[prefix+"_power"].push(this.power)
-        new_uniform[prefix+"_linear"].push(this.linear)
-        new_uniform[prefix+"_exp"].push(this.exp)
-        new_uniform[prefix+"_constant"].push(this.constant)
-        new_uniform[prefix+"_num"] += 1
+        new_uniform[prefix + "_color"] = new_uniform[prefix + "_color"].concat(this.color)
+        new_uniform[prefix + "_position"] = new_uniform[prefix + "_position"].concat(Array.from(this.position))
+        new_uniform[prefix + "_power"].push(this.power)
+        new_uniform[prefix + "_linear"].push(this.linear)
+        new_uniform[prefix + "_exp"].push(this.exp)
+        new_uniform[prefix + "_constant"].push(this.constant)
+        new_uniform[prefix + "_num"] += 1
         return new_uniform
     }
-    
+
     /*
     updateUniform(uniform, prefix = "pointLights"){
         //var new_uniform = uniform
@@ -162,14 +172,14 @@ export class SpotLightObject extends PointLightObject {
         global.nextSpotLightID++
     }
 
-    get direction(){
+    get direction() {
         return v3.subtract(this.position, this.forward)
     }
 
-    getNewUniform(uniform, prefix/*: string*/= "spotLights"){
+    getNewUniform(uniform, prefix /*: string*/ = "spotLights") {
         var new_uniform = super.getNewUniform(uniform, prefix)
-        new_uniform[prefix+"_direction"] = new_uniform[prefix+"_direction"].concat(Array.from(this.direction))
-        new_uniform[prefix+"_cutoff"].push(this.cutoff)
+        new_uniform[prefix + "_direction"] = new_uniform[prefix + "_direction"].concat(Array.from(this.direction))
+        new_uniform[prefix + "_cutoff"].push(this.cutoff)
 
         return new_uniform
     }
