@@ -127,12 +127,12 @@ vec4 CalcDirectionalLight(vec3 normal)
 	float visibility = 1.0;
 	
 	/* Shadow mapping */
-	float bias = 0.001 * tan(acos(diffuse_factor));
+	float bias = 0.005 * tan(acos(diffuse_factor));
 	bias = clamp(bias, 0.0, 0.005);
 	for (int i=0;i<4;i++){
 		//int index = int(16.0 * random(gl_FragCoord.xyy, i)) % 16;
-		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/700.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
-			visibility-=0.15;
+		if ( texture( depth_texture, (v_shadowcoord.xy + poissonDisk[i]/2048.0)/v_shadowcoord.w ).r < (v_shadowcoord.z-bias)/v_shadowcoord.w ){
+			visibility-=0.2;
 		}
 	}
 

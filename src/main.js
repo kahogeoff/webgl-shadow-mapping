@@ -645,7 +645,7 @@ function render(time) {
     twgl.setBuffersAndAttributes(gl, indirectLightingProgramInfo, bufferInfo)
     twgl.setUniforms(indirectLightingProgramInfo, indirect_lighting_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
-    */
+    /**/
 
     gl.disable(gl.BLEND)
 
@@ -694,6 +694,7 @@ function start() {
 function update(dt) {
 
     obj2.rotate([dt, 0, 0])
+    //box.translate([0, -dt, 0])
     spot_light.rotate([0, dt, 0])
     directional_light.rotate([0, -dt / 4, 0])
 
