@@ -50,7 +50,9 @@ export class ModelObject extends BaseObject {
     constructor() {
         super()
         //this.uniform = {}
-        this.model_data = []
+        this.glTF_path = ""
+        this.mesh_data = []
+        this.textures_src = []
         this.textures = []
         this.material = {
             do_reflection: true,
@@ -69,6 +71,8 @@ export class ModelObject extends BaseObject {
     }
 
     static loadGLTF(object, glTF) {
+        console.log(glTF)
+        
         var i = 0
         var current_scene = glTF.scenes[glTF.defaultScene]
         var tmp_v3_translate = v3.create()
@@ -79,30 +83,30 @@ export class ModelObject extends BaseObject {
             for (var i = 0, len = mesh.primitives.length; i < len; ++i) {
                 var primitive = mesh.primitives[i]
                 //var indices = primitive.indices
-                var indices_data = []
-                var position_data = []
-                var normal_data = []
-                var texcoord_0_data = []
-
-                indices_data = new Uint16Array(glTF.accessors[primitive.indices].bufferView.data)
-                position_data = new Float32Array(primitive.attributes.POSITION.bufferView.data, primitive.attributes.POSITION.byteOffset)
-                normal_data = new Float32Array(primitive.attributes.NORMAL.bufferView.data, primitive.attributes.NORMAL.byteOffset)
+                var data = {
+                    indices: new Uint16Array(glTF.accessors[primitive.indices].bufferView.data),
+                    position: new Float32Array(primitive.attributes.POSITION.bufferView.data, primitive.attributes.POSITION.byteOffset),
+                    normal: new Float32Array(primitive.attributes.NORMAL.bufferView.data, primitive.attributes.NORMAL.byteOffset)
+                }
 
                 if (primitive.attributes.TEXCOORD_0) {
                     console.log("I have texture")
-                    texcoord_0_data = new Float32Array(primitive.attributes.TEXCOORD_0.bufferView.data)
+                    data["texcoord"] = new Float32Array(primitive.attributes.TEXCOORD_0.bufferView.data)
 
                 } else {
                     console.log("No I don't")
                 }
                 //var position = new Float32Array (primitive.attributes.NORMAL.bufferView.data)
 
-                object.model_data.push({
-                    position: position_data,
-                    normal: normal_data,
-                    texcoord: texcoord_0_data,
-                    indices: indices_data,
-                })
+                object.mesh_data.push(data)
+
+                if(glTF.images)
+                {
+                    object.textures_src.push(glTF.images[0].currentSrc)
+                }else{
+                    //object.textures_src.push([255, 255, 255, 255])
+                }
+                
             }
         }
     }

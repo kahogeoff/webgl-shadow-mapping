@@ -53,27 +53,12 @@ let samplesTexture = undefined
 
 // Set up a box
 let box = new ModelObject()
+box.glTF_path = "assets/Duck/Duck.gltf"
 box.name = "A freaking box"
-box.model_data.push({
-    position: [1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1],
-    normal: [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1],
-    texcoord: [1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-    indices: [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23],
-})
 box.position = v3.create(0, 1, 0)
 box.rotation = v3.create(0, glMatrix.toRadian(45), 0)
 box.material.do_reflection = false
-box.textures.push([
-    255, 255, 255, 255,
-    192, 192, 192, 255,
-    255, 255, 255, 255,
-    192, 192, 192, 255,
-    255, 255, 255, 255,
-    192, 192, 192, 255,
-    255, 255, 255, 255,
-    192, 192, 192, 255,
-    255, 255, 255, 255,
-])
+box.scale = v3.create(0.02,0.02,0.02)
 
 let obj2 = new ModelObject()
 obj2.name = "Object2"
@@ -81,7 +66,7 @@ obj2.position = v3.create(3, 3, 3)
 //obj2.cast_shadow = false
 obj2.material.do_reflection = false
 obj2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
-obj2.textures.push([
+obj2.textures_src.push([
     16, 220, 220, 255,
     220, 220, 16, 255,
     220, 16, 220, 255
@@ -91,7 +76,7 @@ let floor = new ModelObject()
 floor.name = "Floor"
 //floor.cast_shadow = false
 floor.material.shininess = 1
-floor.textures.push([
+floor.textures_src.push([
     24, 24, 255, 255,
 ])
 floor.material.flux = [0.1, 0.1, 0.9, 1.0]
@@ -101,7 +86,7 @@ g_wall.name = "Green Wall"
 //g_wall.cast_shadow = false
 g_wall.position = v3.create(0, 5, 5)
 g_wall.rotation = v3.create(glMatrix.toRadian(-90), 0, 0)
-g_wall.textures.push([
+g_wall.textures_src.push([
     24, 180, 24, 255,
 ])
 g_wall.material.flux = [0.1, 0.9, 0.1, 1.0]
@@ -111,7 +96,7 @@ r_wall.name = "Red Wall"
 //r_wall.cast_shadow = false
 r_wall.position = v3.create(5, 5, 0)
 r_wall.rotation = v3.create(0, 0, glMatrix.toRadian(90))
-r_wall.textures.push([
+r_wall.textures_src.push([
     180, 24, 24, 255,
 ])
 r_wall.material.flux = [0.9, 0.1, 0.1, 1.0]
@@ -121,7 +106,7 @@ g_wall_2.name = "Green Wall 2"
 //g_wall_2.cast_shadow = false
 g_wall_2.position = v3.create(0, 5, -5)
 g_wall_2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
-g_wall_2.textures.push([
+g_wall_2.textures_src.push([
     24, 180, 24, 255,
 ])
 g_wall_2.material.flux = [0.1, 0.9, 0.1, 1.0]
@@ -131,7 +116,7 @@ r_wall_2.name = "Red Wall 2"
 //r_wall_2.cast_shadow = false
 r_wall_2.position = v3.create(-5, 5, 0)
 r_wall_2.rotation = v3.create(0, 0, glMatrix.toRadian(-90))
-r_wall_2.textures.push([
+r_wall_2.textures_src.push([
     180, 24, 24, 255,
 ])
 r_wall_2.material.flux = [0.9, 0.1, 0.1, 1.0]
@@ -587,10 +572,8 @@ function render(time) {
         bump_uniforms.ambient_color = element.material.ambient
         bump_uniforms.specular_color = element.material.specular
         bump_uniforms.shininess = element.material.shininess
-        bump_uniforms.texture_0 = twgl.createTexture(gl, {
-            minMag: gl.NEAREST,
-            src: element.textures[0]
-        }) // rsmFrameBufferInfo.attachments[0] 
+        
+        bump_uniforms.texture_0 = element.textures[0] // rsmFrameBufferInfo.attachments[0] 
 
         if (element.recive_shadow) {
             depth_M = world
@@ -630,8 +613,8 @@ function render(time) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
     // Draw scene
-    //gl.enable(gl.BLEND)
-    //gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
     gl.useProgram(directLightingProgramInfo.program)
 
     direct_lighting_uniforms = {
@@ -676,13 +659,7 @@ function render(time) {
 function start() {
 
     // Adding object
-    let file_path = "assets/Duck/Duck.gltf"
-    glTFLoader.loadGLTF(file_path, (glTF) => {
-        ModelObject.loadGLTF(box, glTF)
-
-    })
-    console.log(box.model_data)
-    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data[0])
+    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.mesh_data[0])
     obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
     floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
     r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
@@ -697,6 +674,15 @@ function start() {
     object_list.push(g_wall)
     object_list.push(r_wall_2)
     object_list.push(g_wall_2)
+
+    object_list.forEach(element => {
+        element.textures.push(twgl.createTexture(gl, {
+            min: gl.NEAREST_MIPMAP_LINEAR,
+            mag: gl.LINEAR,
+            warp: gl.REPEAT,
+            src: element.textures_src[0]
+        }))
+    })
 
     directional_light.rotation = v3.create(-0.4, -1.2, 0)
     spot_light.rotation = v3.create(-0.4, -1.2, 0)
@@ -721,5 +707,11 @@ function update(dt) {
 }
 
 init()
-start()
+
+let file_path = box.glTF_path
+glTFLoader.loadGLTF(file_path, (glTF) => {
+    ModelObject.loadGLTF(box, glTF)
+    console.log(box.textures_src)
+    start()
+})
 requestAnimationFrame(render)

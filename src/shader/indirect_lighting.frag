@@ -30,7 +30,7 @@ vec3 getIndirectLighting(){
 	vec3 indirect_factor = vec3(0.0, 0.0, 0.0);
 	texPos.xyz = texPos.xyz * 0.5 + 0.5;
 
-	float sampleRadius = 300.0;
+	float sampleRadius = 60.0;
 
 	for(int i = 0; i < NUMBER_SAMPLES; i++){
 		vec3 s = texture(samples_texture, vec2( float(i) / float(SAMPLES_TEX_SIZE), 0.0 )).xyz;
@@ -49,10 +49,10 @@ vec3 getIndirectLighting(){
 		);
 
 		result *= weight * weight;
-      	result *= (1.0 / float(NUMBER_SAMPLES));
+      	result *= (1.0 / (float(NUMBER_SAMPLES)*2.0));
 		indirect_factor += result;
 	}
-	return clamp(indirect_factor * 6.0, 0.0, 1.0);
+	return clamp(indirect_factor * 2.0, 0.0, 1.0);
 }
 
 void main(){
