@@ -50,12 +50,7 @@ export class ModelObject extends BaseObject {
     constructor() {
         super()
         //this.uniform = {}
-        this.model_data = {
-            position: [],
-            normal: [],
-            texcoord: [],
-            indices: [],
-        }
+        this.model_data = []
         this.textures = []
         this.material = {
             do_reflection: true,
@@ -66,34 +61,51 @@ export class ModelObject extends BaseObject {
             shininess: 8,
         }
         this.bufferInfo = undefined
+        //this.shaderProgramInfo = undefined
+
         this.childern /*: ModelObject[]*/ = []
         this.cast_shadow = true
         this.recive_shadow = true
-        //this.shaderProgramInfo = {}
-        let file_path = "assets/Box/Box.gltf"
-        glTFLoader.loadGLTF(file_path, (glTF) => {
-            this.setUpGLTF(glTF)
-            console.log(glTF)
-        })
-
     }
 
-    setUpGLTF(glTF) {
+    static loadGLTF(object, glTF) {
         var i = 0
         var current_scene = glTF.scenes[glTF.defaultScene]
         var tmp_v3_translate = v3.create()
 
-        for (var mid = 0, meshes_num = glTF.meshes.length; mid < meshes_num; mid++){
+        for (var mid = 0, meshes_num = glTF.meshes.length; mid < meshes_num; mid++) {
             var mesh = glTF.meshes[mid]
 
-            for(var i = 0, len = mesh.primitives.length; i < len; ++i){
+            for (var i = 0, len = mesh.primitives.length; i < len; ++i) {
                 var primitive = mesh.primitives[i]
-                
+                //var indices = primitive.indices
+                var indices_data = []
+                var position_data = []
+                var normal_data = []
+                var texcoord_0_data = []
+
+                indices_data = new Uint16Array(glTF.accessors[primitive.indices].bufferView.data)
+                position_data = new Float32Array(primitive.attributes.POSITION.bufferView.data, primitive.attributes.POSITION.byteOffset)
+                normal_data = new Float32Array(primitive.attributes.NORMAL.bufferView.data, primitive.attributes.NORMAL.byteOffset)
+
+                if (primitive.attributes.TEXCOORD_0) {
+                    console.log("I have texture")
+                    texcoord_0_data = new Float32Array(primitive.attributes.TEXCOORD_0.bufferView.data)
+
+                } else {
+                    console.log("No I don't")
+                }
+                //var position = new Float32Array (primitive.attributes.NORMAL.bufferView.data)
+
+                object.model_data.push({
+                    position: position_data,
+                    normal: normal_data,
+                    texcoord: texcoord_0_data,
+                    indices: indices_data,
+                })
             }
         }
-        
     }
-
 }
 
 export class BasicLightObject extends BaseObject {
@@ -115,6 +127,10 @@ export class DirectionalLightObject extends BasicLightObject {
         //this.direction = [0, -1, 0]
         //this.ambient = [0, 0, 0, 1]
 
+    }
+
+    get projection() {
+        return m4.ortho(-10, 10, -10, 10, -10, 20)
     }
 }
 

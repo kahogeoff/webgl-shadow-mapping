@@ -54,12 +54,12 @@ let samplesTexture = undefined
 // Set up a box
 let box = new ModelObject()
 box.name = "A freaking box"
-box.model_data = {
+box.model_data.push({
     position: [1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1],
     normal: [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1],
     texcoord: [1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
     indices: [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23],
-}
+})
 box.position = v3.create(0, 1, 0)
 box.rotation = v3.create(0, glMatrix.toRadian(45), 0)
 box.material.do_reflection = false
@@ -404,7 +404,7 @@ function init() {
         {
             internalFormat: gl.DEPTH_COMPONENT24,
             format: gl.DEPTH_COMPONENT
-        }   //Enable depth
+        } //Enable depth
     ], shadowDepthTextureSize, shadowDepthTextureSize)
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, rsmFrameBufferInfo.framebuffer)
@@ -418,16 +418,27 @@ function init() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
     // Set a geometry frame buffer
-    gFrameBufferInfo = twgl.createFramebufferInfo(gl, [
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //color
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //normal
-        { internalFormat: gl.RGBA32F, format: gl.RGBA, type: gl.FLOAT },    //world position 
+    gFrameBufferInfo = twgl.createFramebufferInfo(gl, [{
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //color
+        {
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //normal
+        {
+            internalFormat: gl.RGBA32F,
+            format: gl.RGBA,
+            type: gl.FLOAT
+        }, //world position 
         {
             internalFormat: gl.DEPTH_COMPONENT24,
             format: gl.DEPTH_COMPONENT
         }
     ], canvas.width, canvas.height)
-    
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, gFrameBufferInfo.framebuffer)
     gl.drawBuffers([
         gl.COLOR_ATTACHMENT0,
@@ -449,6 +460,7 @@ function init() {
         console.log((e.clientX - rect.left) + ", " + (e.clientY - rect.top))
     })
 }
+
 //var pixels
 function render(time) {
 
@@ -539,7 +551,7 @@ function render(time) {
 
         //console.log(pixels)
     })
-    
+
     /* Phong shader */
     gl.enable(gl.POLYGON_OFFSET_FILL)
     gl.polygonOffset(1.0, 2.0)
@@ -614,13 +626,12 @@ function render(time) {
     twgl.setBuffersAndAttributes(gl, lightHintProgramInfo, bufferInfo)
     twgl.setUniforms(lightHintProgramInfo, light_hint_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
-    
+
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
     // Draw scene
     //gl.enable(gl.BLEND)
     //gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
-    
     gl.useProgram(directLightingProgramInfo.program)
 
     direct_lighting_uniforms = {
@@ -631,8 +642,8 @@ function render(time) {
     twgl.setBuffersAndAttributes(gl, directLightingProgramInfo, bufferInfo)
     twgl.setUniforms(directLightingProgramInfo, direct_lighting_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
-    
-    
+
+    /* Reflection
     gl.useProgram(indirectLightingProgramInfo.program)
 
     indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
@@ -648,13 +659,13 @@ function render(time) {
     indirect_lighting_uniforms["light_P"] = depth_P
     indirect_lighting_uniforms["light_V"] = depth_V
 
-    bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
     twgl.setBuffersAndAttributes(gl, indirectLightingProgramInfo, bufferInfo)
     twgl.setUniforms(indirectLightingProgramInfo, indirect_lighting_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
-    
+    */
+
     gl.disable(gl.BLEND)
-    
+
     gl.useProgram(null)
 
     /* Updating shit */
@@ -665,7 +676,13 @@ function render(time) {
 function start() {
 
     // Adding object
-    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data)
+    let file_path = "assets/Duck/Duck.gltf"
+    glTFLoader.loadGLTF(file_path, (glTF) => {
+        ModelObject.loadGLTF(box, glTF)
+
+    })
+    console.log(box.model_data)
+    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.model_data[0])
     obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
     floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
     r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
