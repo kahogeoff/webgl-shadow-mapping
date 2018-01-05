@@ -612,21 +612,23 @@ function render(time) {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-    // Draw scene
+    // Final touch
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
+    
+    bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
+
+    // Draw scene
     gl.useProgram(directLightingProgramInfo.program)
 
     direct_lighting_uniforms = {
         color_texture: gFrameBufferInfo.attachments[0]
     }
-
-    bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
     twgl.setBuffersAndAttributes(gl, directLightingProgramInfo, bufferInfo)
     twgl.setUniforms(directLightingProgramInfo, direct_lighting_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
 
-    /* Reflection
+    /* Reflection */
     gl.useProgram(indirectLightingProgramInfo.program)
 
     indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
