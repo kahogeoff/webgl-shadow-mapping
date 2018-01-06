@@ -52,107 +52,134 @@ let gFrameBufferInfo = undefined
 let samplesTexture = undefined
 
 // Set up a box
-let box = new ModelObject()
-box.glTF_path = "assets/Duck/Duck.gltf"
-box.name = "A freaking box"
-box.position = v3.create(0, 1, 0)
-box.rotation = v3.create(0, glMatrix.toRadian(45), 0)
-box.material.do_reflection = false
-box.scale = v3.create(0.02,0.02,0.02)
+let box = new ModelObject({
+    glTF_path: "assets/Duck/Duck.gltf",
+    name: "A freaking box",
+    position: v3.create(0, 1, 0),
+    rotation: v3.create(0, glMatrix.toRadian(45), 0),
+    scale: v3.create(0.02, 0.02, 0.02),
+    material: {
+        do_reflection: false
+    },
+})
 
-let obj2 = new ModelObject()
-obj2.name = "Object2"
-obj2.position = v3.create(3, 3, 3)
-//obj2.cast_shadow = false
-obj2.material.do_reflection = false
-obj2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
-obj2.textures_src.push([
-    16, 220, 220, 255,
-    220, 220, 16, 255,
-    220, 16, 220, 255
-])
+let obj2 = new ModelObject({
+    name: "Object2",
+    position: v3.create(3, 3, 3),
+    rotation: v3.create(glMatrix.toRadian(90), 0, 0),
+    textures_src: [
+        [
+            16, 220, 220, 255,
+            220, 220, 16, 255,
+            220, 16, 220, 255
+        ]
+    ],
+    material: {
+        do_reflection: false
+    },
+    //cast_shadow: false,
+})
 
-let floor = new ModelObject()
-floor.name = "Floor"
-//floor.cast_shadow = false
-floor.material.shininess = 1
-floor.textures_src.push([
-    24, 24, 255, 255,
-])
-floor.material.flux = [0.1, 0.1, 0.9, 1.0]
+let floor = new ModelObject({
+    name: "Floor",
+    textures_src: [
+        [24, 24, 255, 255, ]
+    ],
+    material: {
+        shininess: 1,
+        flux: [0.1, 0.1, 0.9, 1.0]
+    },
+    cast_shadow: true
+})
 
-let g_wall = new ModelObject()
-g_wall.name = "Green Wall"
-//g_wall.cast_shadow = false
-g_wall.position = v3.create(0, 5, 5)
-g_wall.rotation = v3.create(glMatrix.toRadian(-90), 0, 0)
-g_wall.textures_src.push([
-    24, 180, 24, 255,
-])
-g_wall.material.flux = [0.1, 0.9, 0.1, 1.0]
+let g_wall = new ModelObject({
+    name: "Green Wall",
+    position: v3.create(0, 5, 5),
+    rotation: v3.create(glMatrix.toRadian(-90), 0, 0),
+    textures_src: [
+        [24, 180, 24, 255]
+    ],
+    material: {
+        flux: [0.1, 0.9, 0.1, 1.0],
+    },
+    //cast_shadow = false
+})
 
-let r_wall = new ModelObject()
-r_wall.name = "Red Wall"
-//r_wall.cast_shadow = false
-r_wall.position = v3.create(5, 5, 0)
-r_wall.rotation = v3.create(0, 0, glMatrix.toRadian(90))
-r_wall.textures_src.push([
-    180, 24, 24, 255,
-])
-r_wall.material.flux = [0.9, 0.1, 0.1, 1.0]
+let r_wall = new ModelObject({
+    name: "Red Wall",
+    position: v3.create(5, 5, 0),
+    rotation: v3.create(0, 0, glMatrix.toRadian(90)),
+    textures_src: [
+        [180, 24, 24, 255, ]
+    ],
+    material: {
+        flux: [0.9, 0.1, 0.1, 1.0],
+    },
+    //cast_shadow = false
+})
 
-let g_wall_2 = new ModelObject()
-g_wall_2.name = "Green Wall 2"
-//g_wall_2.cast_shadow = false
-g_wall_2.position = v3.create(0, 5, -5)
-g_wall_2.rotation = v3.create(glMatrix.toRadian(90), 0, 0)
-g_wall_2.textures_src.push([
-    24, 180, 24, 255,
-])
-g_wall_2.material.flux = [0.1, 0.9, 0.1, 1.0]
+let g_wall_2 = new ModelObject({
+    name: "Green Wall 2",
+    position: v3.create(0, 5, -5),
+    rotation: v3.create(glMatrix.toRadian(90), 0, 0),
+    textures_src: [
+        [24, 180, 24, 255]
+    ],
+    material: {
+        flux: [0.1, 0.9, 0.1, 1.0],
+    },
+    //cast_shadow = false
+})
 
-let r_wall_2 = new ModelObject()
-r_wall_2.name = "Red Wall 2"
-//r_wall_2.cast_shadow = false
-r_wall_2.position = v3.create(-5, 5, 0)
-r_wall_2.rotation = v3.create(0, 0, glMatrix.toRadian(-90))
-r_wall_2.textures_src.push([
-    180, 24, 24, 255,
-])
-r_wall_2.material.flux = [0.9, 0.1, 0.1, 1.0]
+let r_wall_2 = new ModelObject({
+    name: "Red Wall 2",
+    position: v3.create(-5, 5, 0),
+    rotation: v3.create(0, 0, glMatrix.toRadian(-90)),
+    textures_src: [
+        [180, 24, 24, 255, ]
+    ],
+    material: {
+        flux: [0.9, 0.1, 0.1, 1.0],
+    },
+    //cast_shadow = false
+})
 
 // Set up a directional light
-let directional_light = new DirectionalLightObject()
-directional_light.name = "MyLittleDirectionalLight"
-directional_light.color = [0.8, 0.8, 0.8, 1]
-directional_light.power = 0.5
+let directional_light = new DirectionalLightObject({
+    name: "MyLittleDirectionalLight",
+    color: [0.8, 0.8, 0.8, 1],
+    power: 0.8,
+})
 
 /* Set up a point light */
-let point_light = new PointLightObject()
-point_light.name = "MyLittlePointLight"
-point_light.position = v3.create(1, 2.5, 1)
-point_light.color = [0.9, 0.9, 0.1, 1]
-point_light.power = 0
-point_light.exp = 0.6
+let point_light = new PointLightObject({
+    name: "MyLittlePointLight",
+    position: v3.create(1, 2.5, 1),
+    color: [0.9, 0.9, 0.1, 1],
+    power: 1.0,
+    exp: 0.6
+})
 /**/
 
-/**/
-let spot_light = new SpotLightObject()
-spot_light.name = "MyLittleSpotLight"
-spot_light.position = v3.create(1, 1, -1)
-spot_light.color = [0.9, 0.1, 0.1, 1]
-spot_light.power = 0
-spot_light.exp = 0.6
-spot_light.cutoff = 0.9
+/* Set up a spot light */
+let spot_light = new SpotLightObject({
+    name: "MyLittleSpotLight",
+    position: v3.create(1, 1, -1),
+    color: [0.9, 0.9, 0.1, 1],
+    power: 10.0,
+    exp: 0.6,
+    cutoff: 0.9
+})
 /**/
 
 // Set up a camera
-let camera = new BasicCameraObject()
-camera.name = "MyLittleCamera"
-camera.position = v3.create(-2, 5, -6)
-camera.rotation = v3.create(-0.4, -1.2, 0)
-camera.fov_angle = 60
-camera.zFar = 300
+let camera = new BasicCameraObject({
+    name: "MyLittleCamera",
+    position: v3.create(-2, 5, -6),
+    rotation: v3.create(-0.4, -1.2, 0),
+    fov_angle: 60,
+    zFar: 300
+})
 
 let object_list = []
 
@@ -446,6 +473,10 @@ function init() {
     })
 }
 
+function preload() {
+    // Do nothing for now
+}
+
 //var pixels
 function render(time) {
 
@@ -526,6 +557,8 @@ function render(time) {
         depth_MVP = m4.multiply(m4.multiply(depth_P, depth_V), depth_M)
         rsm_uniforms["do_reflection"] = element.material.do_reflection
         rsm_uniforms["M"] = world
+        //console.log(element.name + ": " + element.material.flux)
+
         rsm_uniforms["color"] = element.material.flux
         rsm_uniforms["N"] = m4.transpose(m4.inverse(m4.multiply(depth_V, depth_M)))
 
@@ -572,7 +605,7 @@ function render(time) {
         bump_uniforms.ambient_color = element.material.ambient
         bump_uniforms.specular_color = element.material.specular
         bump_uniforms.shininess = element.material.shininess
-        
+
         bump_uniforms.texture_0 = element.textures[0] // rsmFrameBufferInfo.attachments[0] 
 
         if (element.recive_shadow) {
@@ -600,7 +633,6 @@ function render(time) {
 
     // Draw the light hint
     world = m4.translation(point_light.position)
-    //world = m4.translation(point_light.position)
     light_hint_uniforms.uniform_MVP = m4.multiply(viewProjection, world)
 
     gl.useProgram(lightHintProgramInfo.program)
@@ -615,7 +647,7 @@ function render(time) {
     // Final touch
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_CONSTANT_ALPHA)
-    
+
     bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
 
     // Draw scene
@@ -633,16 +665,17 @@ function render(time) {
 
     indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
     indirect_lighting_uniforms["g_worldPos_texture"] = gFrameBufferInfo.attachments[2]
-    
-    indirect_lighting_uniforms["depth_texture"] = rsmFrameBufferInfo.attachments[0],
+
+    indirect_lighting_uniforms["depth_texture"] = rsmFrameBufferInfo.attachments[0]
     indirect_lighting_uniforms["normal_texture"] = rsmFrameBufferInfo.attachments[1]
     indirect_lighting_uniforms["flux_texture"] = rsmFrameBufferInfo.attachments[2]
     indirect_lighting_uniforms["worldPos_texture"] = rsmFrameBufferInfo.attachments[3]
-    
+
     indirect_lighting_uniforms["samples_texture"] = samplesTexture
 
     indirect_lighting_uniforms["light_P"] = depth_P
     indirect_lighting_uniforms["light_V"] = depth_V
+    indirect_lighting_uniforms["light_power"] = directional_light.power
 
     twgl.setBuffersAndAttributes(gl, indirectLightingProgramInfo, bufferInfo)
     twgl.setUniforms(indirectLightingProgramInfo, indirect_lighting_uniforms)
@@ -686,8 +719,8 @@ function start() {
         }))
     })
 
-    directional_light.rotation = v3.create(-0.4, -1.2, 0)
-    spot_light.rotation = v3.create(-0.4, -1.2, 0)
+    directional_light.rotation = v3.create(-0.6, -1.2, 0)
+    spot_light.rotation = v3.create(glMatrix.toRadian(0), -1.2, 0)
 
     pointLight_uniforms = point_light.getNewUniform(pointLight_uniforms)
     spotLight_uniforms = spot_light.getNewUniform(spotLight_uniforms)
@@ -697,7 +730,7 @@ function update(dt) {
 
     obj2.rotate([dt, 0, 0])
     //box.translate([0, -dt, 0])
-    spot_light.rotate([0, dt, 0])
+    spot_light.rotate([0, dt / 6, 0])
     directional_light.rotate([0, -dt / 4, 0])
 
     if (canMove) {
@@ -710,11 +743,13 @@ function update(dt) {
 }
 
 init()
-
+preload()
+// Lazy load
 let file_path = box.glTF_path
 glTFLoader.loadGLTF(file_path, (glTF) => {
     ModelObject.loadGLTF(box, glTF)
-    console.log(box.textures_src)
+    //console.log(box.textures_src)
     start()
 })
+
 requestAnimationFrame(render)

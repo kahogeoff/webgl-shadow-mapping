@@ -10,11 +10,15 @@ const v3 = twgl.v3
 const glTFLoader = new MinimalGLTFLoader.glTFLoader()
 
 class BaseObject {
-    constructor() {
-        this.name = "no_name"
-        this.scale = v3.create(1, 1, 1)
-        this.position = v3.create()
-        this.rotation = v3.create()
+    constructor(args) {
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+        this.name = _args.name || "no_name"
+        this.scale = _args.scale || v3.create(1, 1, 1)
+        this.position = _args.position || v3.create()
+        this.rotation = _args.rotation || v3.create()
     }
 
     get transformMatrix() {
@@ -47,32 +51,48 @@ class BaseObject {
 }
 
 export class ModelObject extends BaseObject {
-    constructor() {
-        super()
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+
         //this.uniform = {}
-        this.glTF_path = ""
+        this.glTF_path = _args.glTF_path || ""
         this.mesh_data = []
-        this.textures_src = []
+        this.textures_src = _args.textures_src || []
         this.textures = []
-        this.material = {
-            do_reflection: true,
-            diffuse: [1, 1, 1, 1],
-            ambient: [0.1, 0.1, 0.1, 1],
-            specular: [1, 1, 1, 1],
-            flux: [1, 1, 1, 1], // Lazy flux
-            shininess: 8,
+        if (_args.material != undefined) {
+            this.material = {
+                do_reflection: (_args.material.do_reflection != (null||undefined)? _args.material.do_reflection : true),
+                diffuse: _args.material.diffuse || [1, 1, 1, 1],
+                ambient: _args.material.ambient || [0.1, 0.1, 0.1, 1],
+                specular: _args.material.specular || [1, 1, 1, 1],
+                flux: _args.material.flux || [1, 1, 1, 1], // Lazy flux
+                shininess: _args.material.shininess || 8,
+            }
+        } else {
+            this.material = {
+                do_reflection: true,
+                diffuse: [1, 1, 1, 1],
+                ambient: [0.1, 0.1, 0.1, 1],
+                specular: [1, 1, 1, 1],
+                flux: [1, 1, 1, 1], // Lazy flux
+                shininess: 8,
+            }
         }
         this.bufferInfo = undefined
         //this.shaderProgramInfo = undefined
 
-        this.childern /*: ModelObject[]*/ = []
-        this.cast_shadow = true
-        this.recive_shadow = true
+        this.childern /*: ModelObject[]*/ = _args.childern || []
+        this.cast_shadow = _args.cast_shadow || true
+        this.recive_shadow = _args.recive_shadow || true
     }
 
     static loadGLTF(object, glTF) {
-        console.log(glTF)
-        
+        //console.log(glTF)
+
         var i = 0
         var current_scene = glTF.scenes[glTF.defaultScene]
         var tmp_v3_translate = v3.create()
@@ -100,24 +120,28 @@ export class ModelObject extends BaseObject {
 
                 object.mesh_data.push(data)
 
-                if(glTF.images)
-                {
+                if (glTF.images) {
                     object.textures_src.push(glTF.images[0].currentSrc)
-                }else{
+                } else {
                     //object.textures_src.push([255, 255, 255, 255])
                 }
-                
+
             }
         }
     }
 }
 
 export class BasicLightObject extends BaseObject {
-    constructor() {
-        super()
-        this.name = "BasicLight"
-        this.color = [1, 1, 1, 1]
-        this.power = 50.0
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+
+        this.name = _args.name || "BasicLight"
+        this.color = _args.color || [1, 1, 1, 1]
+        this.power = _args.power || 50.0
         //this.ambient = [0, 0, 0, 1]
 
     }
@@ -125,9 +149,14 @@ export class BasicLightObject extends BaseObject {
 
 export class DirectionalLightObject extends BasicLightObject {
 
-    constructor() {
-        super()
-        this.name = "DirectionalLight"
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+
+        this.name = _args.name || "DirectionalLight"
         //this.direction = [0, -1, 0]
         //this.ambient = [0, 0, 0, 1]
 
@@ -142,13 +171,18 @@ global.nextPointLightID = 0
 global.nextSpotLightID = 0
 
 export class PointLightObject extends BasicLightObject {
-    constructor() {
-        super()
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+        
         this.id = global.nextPointLightID
-        this.name = "PointLight"
-        this.constant = 1.0
-        this.linear = 1.0
-        this.exp = 1.0
+        this.name = _args.name || "PointLight"
+        this.constant = _args.constant || 1.0
+        this.linear = _args.linear || 1.0
+        this.exp = _args.exp || 1.0
         //this.ambient = [0, 0, 0, 1]
 
         global.nextPointLightID++
@@ -182,12 +216,17 @@ export class PointLightObject extends BasicLightObject {
 }
 
 export class SpotLightObject extends PointLightObject {
+    
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
 
-    constructor() {
-        super()
         this.id = global.nextSpotLightID
-        this.name = "SpotLight"
-        this.cutoff = 1.0
+        this.name = _args.name || "SpotLight"
+        this.cutoff = _args.cutoff || 1.0
         //this.ambient = [0, 0, 0, 1]
         global.nextSpotLightID++
     }
@@ -215,14 +254,17 @@ export class SpotLightObject extends PointLightObject {
 }
 
 export class BasicCameraObject extends BaseObject {
-    constructor() {
-        super()
-
-        this.name = "Camera"
-        this.fov_angle = 30
-        this.aspect = 4 / 3
-        this.zNear = 0.5
-        this.zFar = 10
+    constructor(args) {
+        super(args)
+        let _args = {}
+        if (args != undefined) {
+            _args = args
+        }
+        this.name = _args.name || "Camera"
+        this.fov_angle = _args.fov_angle || 30
+        this.aspect = _args.aspect || (4 / 3)
+        this.zNear = _args.zNear || 0.5
+        this.zFar = _args.zFar || 10
         this.target = this.forward
         this.up = [0, 1, 0]
         //this.ambient = [0, 0, 0, 1]

@@ -18,6 +18,8 @@ uniform sampler2D flux_texture;
 uniform sampler2D worldPos_texture;
 uniform sampler2D samples_texture;
 
+uniform float light_power;
+
 uniform mat4 light_P;
 uniform mat4 light_V;
 
@@ -49,10 +51,10 @@ vec3 getIndirectLighting(){
 		);
 
 		result *= weight * weight;
-      	result *= (1.0 / (float(NUMBER_SAMPLES)*2.0));
+      	result *= (1.0 / (float(NUMBER_SAMPLES)));
 		indirect_factor += result;
 	}
-	return clamp(indirect_factor * 10.0, 0.0, 1.0);
+	return clamp(indirect_factor * 6.0 * light_power, 0.0, 1.0);
 }
 
 void main(){
