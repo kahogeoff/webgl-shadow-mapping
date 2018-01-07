@@ -129,6 +129,13 @@ export class ModelObject extends BaseObject {
             }
         }
     }
+
+    static setBufferInfo(object, bufferInfo){
+        console.log(bufferInfo)
+        
+        object.bufferInfo = bufferInfo
+        
+    }
 }
 
 export class BasicLightObject extends BaseObject {

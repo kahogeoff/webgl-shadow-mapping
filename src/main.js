@@ -148,7 +148,7 @@ let r_wall_2 = new ModelObject({
 let directional_light = new DirectionalLightObject({
     name: "MyLittleDirectionalLight",
     color: [0.8, 0.8, 0.8, 1],
-    power: 0.8,
+    power: 0.6,
 })
 
 /* Set up a point light */
@@ -473,10 +473,6 @@ function init() {
     })
 }
 
-function preload() {
-    // Do nothing for now
-}
-
 //var pixels
 function render(time) {
 
@@ -660,7 +656,7 @@ function render(time) {
     twgl.setUniforms(directLightingProgramInfo, direct_lighting_uniforms)
     twgl.drawBufferInfo(gl, bufferInfo)
 
-    /* Reflection */
+    /* Reflection *
     gl.useProgram(indirectLightingProgramInfo.program)
 
     indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
@@ -694,7 +690,7 @@ function render(time) {
 function start() {
 
     // Adding object
-    box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.mesh_data[0])
+    //box.bufferInfo = twgl.createBufferInfoFromArrays(gl, box.mesh_data[0])
     obj2.bufferInfo = twgl.primitives.createTorusBufferInfo(gl, 1, 0.5, 16, 16)
     floor.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
     r_wall.bufferInfo = twgl.primitives.createPlaneBufferInfo(gl, 10, 10)
@@ -742,14 +738,18 @@ function update(dt) {
     }
 }
 
+function preload() {
+    // Do nothing for now
+}
+
 init()
 preload()
 // Lazy load
 let file_path = box.glTF_path
 glTFLoader.loadGLTF(file_path, (glTF) => {
     ModelObject.loadGLTF(box, glTF)
+    ModelObject.setBufferInfo(box, twgl.createBufferInfoFromArrays(gl, box.mesh_data[0]))
     //console.log(box.textures_src)
     start()
 })
-
 requestAnimationFrame(render)
