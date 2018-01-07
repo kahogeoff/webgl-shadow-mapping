@@ -90,7 +90,7 @@ export class ModelObject extends BaseObject {
         this.recive_shadow = _args.recive_shadow || true
     }
 
-    static loadGLTF(object, glTF) {
+    loadGLTF(glTF) {
         //console.log(glTF)
 
         var i = 0
@@ -118,10 +118,10 @@ export class ModelObject extends BaseObject {
                 }
                 //var position = new Float32Array (primitive.attributes.NORMAL.bufferView.data)
 
-                object.mesh_data.push(data)
+                this.mesh_data.push(data)
 
                 if (glTF.images) {
-                    object.textures_src.push(glTF.images[0].currentSrc)
+                    this.textures_src.push(glTF.images[0].currentSrc)
                 } else {
                     //object.textures_src.push([255, 255, 255, 255])
                 }
@@ -130,10 +130,10 @@ export class ModelObject extends BaseObject {
         }
     }
 
-    static setBufferInfo(object, bufferInfo){
+    setBufferInfo(bufferInfo){
         console.log(bufferInfo)
         
-        object.bufferInfo = bufferInfo
+        this.bufferInfo = bufferInfo
         
     }
 }

@@ -17,18 +17,20 @@ import {
 const m4 = twgl.m4
 const v3 = twgl.v3
 
-export class BasicState{
+export class BasicState {
     constructor() {
+        //this.scene = undefined
+        //this.renderer = undefined
     }
 
     init() {
+        //this.scene = scene
+        //this.renderer = renderer
     }
 
-    start(){
-    }
+    start() {}
 
-    update(delta_time){
-    }
+    update(delta_time) {}
 
     exit() {
 
@@ -38,16 +40,20 @@ export class BasicState{
 export class Scene {
     constructor() {
         this.object_list = []
+        this.camera = undefined
         this.directional_light = undefined
         this.point_lights = []
         this.spot_lights = []
         this.current_state = new BasicState()
+
+        this.previous_time = 0
+        this.delta_time = 0
     }
 
-    setCurrentState(new_state){
+    setCurrentState(new_state) {
         this.current_state.exit()
         this.current_state = new_state
-        this.init()
+        this.init(this)
     }
 
     init() {
@@ -55,14 +61,22 @@ export class Scene {
         this.start()
     }
 
-    start(){
+    start() {
         this.current_state.start()
     }
 
-    update(delta_time){
-        this.current_state.update(delta_time)
+    update(time) {
+
+        time *= 0.001
+        this.delta_time = time - this.previous_time
+        this.previous_time = time
+
+        this.current_state.update(this.delta_time)
     }
 
+    static deltaTime() {
+        return this.deltaTime
+    }
 }
 
 export class Renderer {
@@ -130,18 +144,28 @@ export class Renderer {
         this.rsm_uniforms = {}
         this.direct_lighting_uniforms = {}
         this.indirect_lighting_uniforms = {}
-
-        this.previous_time = 0
-        this.delta_time = 0
-        init()
+        this.init()
     }
 
     init() {
+        const shadowDepthTextureSize = 1024
+
+        // Import shaders
+        let defaultVertex = require("./shader/default.vert")
+        let defaultFragment = require("./shader/default.frag")
+        let lightHintVertex = require("./shader/light_hint.vert")
+        let lightHintFragment = require("./shader/light_hint.frag")
+        let rsmVertex = require("./shader/rsm.vert")
+        let rsmFragment = require("./shader/rsm.frag")
+        let indirectLightingFragment = require("./shader/indirect_lighting.frag")
+        let directLightingFragment = require("./shader/direct_lighting.frag")
+        let fullScreenVertex = require("./shader/full_screen.vert")
+
         this.canvas.width = 800
         this.canvas.height = 600
-        document.body.appendChild(canvas)
+        document.body.appendChild(this.canvas)
         //canvas.requestPointerLock = canvas.requestPointerLock
-        this.gl = canvas.getContext("webgl2")
+        this.gl = this.canvas.getContext("webgl2")
 
         const gl /*: WebGLRenderingContext */ = this.gl
         if (!gl) {
@@ -165,7 +189,8 @@ export class Renderer {
         this.indirectLightingProgramInfo = twgl.createProgramInfo(gl, [fullScreenVertex, indirectLightingFragment])
         this.lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
 
-        if (directional_light != undefined) {
+        /*
+        if (scene.directional_light != undefined) {
             this.dirLight_uniforms = {
                 "dirLight.dir": directional_light.forward,
                 "dirLight.color": directional_light.color,
@@ -194,6 +219,7 @@ export class Renderer {
             spotLights_exp: [],
             spotLights_cutoff: [],
         }
+        */
 
         this.depth_uniforms = {
             depthMVP: m4.identity()
@@ -304,7 +330,7 @@ export class Renderer {
                 internalFormat: gl.DEPTH_COMPONENT24,
                 format: gl.DEPTH_COMPONENT
             }
-        ], canvas.width, canvas.height)
+        ], this.canvas.width, this.canvas.height)
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.gFrameBufferInfo.framebuffer)
         gl.drawBuffers([
@@ -417,6 +443,12 @@ export class Renderer {
 
     drawColor(scene) {
         const gl /*: WebGLRenderingContext */ = this.gl
+        const bias_matrix = [
+            0.5, 0.0, 0.0, 0.0,
+            0.0, 0.5, 0.0, 0.0,
+            0.0, 0.0, 0.5, 0.0,
+            0.5, 0.5, 0.5, 1.0
+        ]
 
         let world = m4.identity()
 
@@ -493,10 +525,6 @@ export class Renderer {
     render(scene /*: Scene*/ ) {
         const gl /*: WebGLRenderingContext */ = this.gl
 
-        time *= 0.001
-        this.delta_time = time - this.previous_time
-        this.previous_time = time
-
         twgl.resizeCanvasToDisplaySize(gl.canvas)
 
         /* Setting the light */
@@ -539,35 +567,43 @@ export class Renderer {
         this.bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl)
 
         // Draw scene
-        gl.useProgram(directLightingProgramInfo.program)
+        gl.useProgram(this.directLightingProgramInfo.program)
 
         this.direct_lighting_uniforms = {
-            color_texture: gFrameBufferInfo.attachments[0]
+            color_texture: this.gFrameBufferInfo.attachments[0]
         }
-        twgl.setBuffersAndAttributes(gl, this.directLightingProgramInfo, bufferInfo)
+        twgl.setBuffersAndAttributes(gl, this.directLightingProgramInfo, this.bufferInfo)
         twgl.setUniforms(this.directLightingProgramInfo, this.direct_lighting_uniforms)
         twgl.drawBufferInfo(gl, this.bufferInfo)
 
-        /* Reflection *
-        gl.useProgram(indirectLightingProgramInfo.program)
+        /* Reflection */
+        let light_inv_dir = [-scene.directional_light.forward[0], -scene.directional_light.forward[1], -scene.directional_light.forward[2], ]        
+        let depth_P = scene.directional_light.projection //m4.ortho(-10, 10, -10, 10, -10, 20)
+        //let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
+        let depth_V = m4.inverse(
+            //m4.lookAt(point_light.position, v3.subtract(point_light.position, light_inv_dir), [0, 1, 0])
+            m4.lookAt(light_inv_dir, [0, 0, 0], [0, 1, 0])
+        )
+        
+        gl.useProgram(this.indirectLightingProgramInfo.program)
 
-        indirect_lighting_uniforms["g_normal_texture"] = gFrameBufferInfo.attachments[1]
-        indirect_lighting_uniforms["g_worldPos_texture"] = gFrameBufferInfo.attachments[2]
+        this.indirect_lighting_uniforms["g_normal_texture"] = this.gFrameBufferInfo.attachments[1]
+        this.indirect_lighting_uniforms["g_worldPos_texture"] = this.gFrameBufferInfo.attachments[2]
 
-        indirect_lighting_uniforms["depth_texture"] = rsmFrameBufferInfo.attachments[0]
-        indirect_lighting_uniforms["normal_texture"] = rsmFrameBufferInfo.attachments[1]
-        indirect_lighting_uniforms["flux_texture"] = rsmFrameBufferInfo.attachments[2]
-        indirect_lighting_uniforms["worldPos_texture"] = rsmFrameBufferInfo.attachments[3]
+        this.indirect_lighting_uniforms["depth_texture"] = this.rsmFrameBufferInfo.attachments[0]
+        this.indirect_lighting_uniforms["normal_texture"] = this.rsmFrameBufferInfo.attachments[1]
+        this.indirect_lighting_uniforms["flux_texture"] = this.rsmFrameBufferInfo.attachments[2]
+        this.indirect_lighting_uniforms["worldPos_texture"] = this.rsmFrameBufferInfo.attachments[3]
 
-        indirect_lighting_uniforms["samples_texture"] = samplesTexture
+        this.indirect_lighting_uniforms["samples_texture"] = this.samplesTexture
 
-        indirect_lighting_uniforms["light_P"] = depth_P
-        indirect_lighting_uniforms["light_V"] = depth_V
-        indirect_lighting_uniforms["light_power"] = directional_light.power
+        this.indirect_lighting_uniforms["light_P"] = depth_P
+        this.indirect_lighting_uniforms["light_V"] = depth_V
+        this.indirect_lighting_uniforms["light_power"] = scene.directional_light.power
 
-        twgl.setBuffersAndAttributes(gl, indirectLightingProgramInfo, bufferInfo)
-        twgl.setUniforms(indirectLightingProgramInfo, indirect_lighting_uniforms)
-        twgl.drawBufferInfo(gl, bufferInfo)
+        twgl.setBuffersAndAttributes(gl, this.indirectLightingProgramInfo, this.bufferInfo)
+        twgl.setUniforms(this.indirectLightingProgramInfo, this.indirect_lighting_uniforms)
+        twgl.drawBufferInfo(gl, this.bufferInfo)
         /**/
 
         gl.disable(gl.BLEND)
@@ -577,10 +613,6 @@ export class Renderer {
         /* Updating shit */
         //update(delta_time)
         //requestAnimationFrame(render)
-    }
-
-    static deltaTime(){
-        return this.deltaTime
     }
     //draw(time)
 }
