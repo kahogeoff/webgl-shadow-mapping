@@ -1,83 +1,6 @@
 import * as twgl from "twgl.js"
-import * as MinimalGLTFLoader from "minimal-gltf-loader"
-import {
-    glMatrix,
-    vec2
-} from "gl-matrix"
-
-import * as keyboardjs from "keyboardjs"
-
-import {
-    ModelObject,
-    PointLightObject,
-    DirectionalLightObject,
-    SpotLightObject,
-    BasicCameraObject
-} from "./object"
 const m4 = twgl.m4
 const v3 = twgl.v3
-
-export class BasicState {
-    constructor() {
-        //this.scene = undefined
-        //this.renderer = undefined
-    }
-
-    init() {
-        //this.scene = scene
-        //this.renderer = renderer
-    }
-
-    start() {}
-
-    update(delta_time) {}
-
-    exit() {
-
-    }
-}
-
-export class Scene {
-    constructor() {
-        this.object_list = []
-        this.camera = undefined
-        this.directional_light = undefined
-        this.point_lights = []
-        this.spot_lights = []
-        this.current_state = new BasicState()
-
-        this.previous_time = 0
-        this.delta_time = 0
-    }
-
-    setCurrentState(new_state) {
-        this.current_state.exit()
-        this.current_state = new_state
-        this.init(this)
-    }
-
-    init() {
-        this.current_state.init()
-        this.start()
-    }
-
-    start() {
-        this.current_state.start()
-    }
-
-    update(time) {
-
-        time *= 0.001
-        this.delta_time = time - this.previous_time
-        this.previous_time = time
-
-        this.current_state.update(this.delta_time)
-    }
-
-    static deltaTime() {
-        return this.deltaTime
-    }
-}
 
 export class Renderer {
     constructor(canvas /*: HTMLCanvasElement */ ) {
@@ -151,20 +74,20 @@ export class Renderer {
         const shadowDepthTextureSize = 1024
 
         // Import shaders
-        let defaultVertex = require("./shader/default.vert")
-        let defaultFragment = require("./shader/default.frag")
-        let lightHintVertex = require("./shader/light_hint.vert")
-        let lightHintFragment = require("./shader/light_hint.frag")
-        let rsmVertex = require("./shader/rsm.vert")
-        let rsmFragment = require("./shader/rsm.frag")
-        let indirectLightingFragment = require("./shader/indirect_lighting.frag")
-        let directLightingFragment = require("./shader/direct_lighting.frag")
-        let fullScreenVertex = require("./shader/full_screen.vert")
+        let defaultVertex = require("../shader/default.vert")
+        let defaultFragment = require("../shader/default.frag")
+        let lightHintVertex = require("../shader/light_hint.vert")
+        let lightHintFragment = require("../shader/light_hint.frag")
+        let rsmVertex = require("../shader/rsm.vert")
+        let rsmFragment = require("../shader/rsm.frag")
+        let indirectLightingFragment = require("../shader/indirect_lighting.frag")
+        let directLightingFragment = require("../shader/direct_lighting.frag")
+        let fullScreenVertex = require("../shader/full_screen.vert")
 
         this.canvas.width = 800
         this.canvas.height = 600
         document.body.appendChild(this.canvas)
-        //canvas.requestPointerLock = canvas.requestPointerLock
+
         this.gl = this.canvas.getContext("webgl2")
 
         const gl /*: WebGLRenderingContext */ = this.gl
@@ -188,38 +111,6 @@ export class Renderer {
         this.directLightingProgramInfo = twgl.createProgramInfo(gl, [fullScreenVertex, directLightingFragment])
         this.indirectLightingProgramInfo = twgl.createProgramInfo(gl, [fullScreenVertex, indirectLightingFragment])
         this.lightHintProgramInfo = twgl.createProgramInfo(gl, [lightHintVertex, lightHintFragment])
-
-        /*
-        if (scene.directional_light != undefined) {
-            this.dirLight_uniforms = {
-                "dirLight.dir": directional_light.forward,
-                "dirLight.color": directional_light.color,
-                "dirLight.power": directional_light.power,
-            }
-        }
-
-        this.pointLight_uniforms = {
-            pointLights_num: 0,
-            pointLights_color: [],
-            pointLights_position: [],
-            pointLights_power: [],
-            pointLights_constant: [],
-            pointLights_linear: [],
-            pointLights_exp: [],
-        }
-
-        this.spotLight_uniforms = {
-            spotLights_num: 0,
-            spotLights_color: [],
-            spotLights_position: [],
-            spotLights_direction: [],
-            spotLights_power: [],
-            spotLights_constant: [],
-            spotLights_linear: [],
-            spotLights_exp: [],
-            spotLights_cutoff: [],
-        }
-        */
 
         this.depth_uniforms = {
             depthMVP: m4.identity()
@@ -494,7 +385,7 @@ export class Renderer {
                 let light_inv_dir = [-scene.directional_light.forward[0], -scene.directional_light.forward[1], -scene.directional_light.forward[2], ]
 
                 let depth_M = world
-                let depth_P = scene.directional_light.projection //m4.ortho(-10, 10, -10, 10, -10, 20)
+                let depth_P = scene.directional_light.projection
                 //let depth_P = m4.perspective(glMatrix.toRadian(45), 1, 2, 50)
                 let depth_V = m4.inverse(
                     //m4.lookAt(point_light.position, v3.subtract(point_light.position, light_inv_dir), [0, 1, 0])
@@ -546,7 +437,7 @@ export class Renderer {
 
         this.drawColor(scene)
 
-        // Draw the light hint
+        // Draw the light hint, we don't need this for now
         /*
         let world = m4.translation(point_light.position)
         light_hint_uniforms.uniform_MVP = m4.multiply(viewProjection, world)
@@ -558,6 +449,7 @@ export class Renderer {
         twgl.setUniforms(lightHintProgramInfo, light_hint_uniforms)
         twgl.drawBufferInfo(gl, bufferInfo)
         */
+
         gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
         // Final touch
@@ -610,9 +502,5 @@ export class Renderer {
 
         gl.useProgram(null)
 
-        /* Updating shit */
-        //update(delta_time)
-        //requestAnimationFrame(render)
     }
-    //draw(time)
 }

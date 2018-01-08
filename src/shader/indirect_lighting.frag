@@ -54,7 +54,7 @@ vec3 getIndirectLighting(){
       	result *= (1.0 / (float(NUMBER_SAMPLES)));
 		indirect_factor += result;
 	}
-	return clamp(indirect_factor * 6.0 * light_power, 0.0, 1.0);
+	return clamp(indirect_factor * 8.0 * light_power, 0.0, 1.0);
 }
 
 void main(){

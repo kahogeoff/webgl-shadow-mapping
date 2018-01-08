@@ -215,6 +215,7 @@ void main()
 
 	outColor = texColor * totalColor ;
     normalTex = vec4(normalize(v_normal).xyz, 1.0);
-    worldPosTex = vec4(vec3(v_worldPos), 1.0);
+    //worldPosTex = vec4(vec3(v_worldPos), 1.0);
+    worldPosTex = vec4(normalize(vec3(v_worldPos)), 1.0);
 	
 }

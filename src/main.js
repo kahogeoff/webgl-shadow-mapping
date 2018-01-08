@@ -7,6 +7,11 @@ import {
 
 import * as keyboardjs from "keyboardjs"
 
+const m4 = twgl.m4
+const v3 = twgl.v3
+
+import { Renderer, BasicScene } from "./Systems"
+import { BasicState } from "./States"
 import {
     ModelObject,
     PointLightObject,
@@ -14,15 +19,6 @@ import {
     SpotLightObject,
     BasicCameraObject
 } from "./object"
-
-import {
-    Renderer,
-    Scene,
-    BasicState
-} from "./system"
-
-const m4 = twgl.m4
-const v3 = twgl.v3
 
 let glTFLoader = new MinimalGLTFLoader.glTFLoader()
 
@@ -58,11 +54,11 @@ let obj2 = new ModelObject({
 let floor = new ModelObject({
     name: "Floor",
     textures_src: [
-        [24, 24, 255, 255, ]
+        [60, 135, 255, 255, ]
     ],
     material: {
         shininess: 1,
-        flux: [0.1, 0.1, 0.9, 1.0]
+        flux: [0.23, 0.53, 0.9, 1.0]
     },
     cast_shadow: true
 })
@@ -72,7 +68,7 @@ let g_wall = new ModelObject({
     position: v3.create(0, 5, 5),
     rotation: v3.create(glMatrix.toRadian(-90), 0, 0),
     textures_src: [
-        [24, 180, 24, 255]
+        [54, 218, 100, 255]
     ],
     material: {
         flux: [0.1, 0.9, 0.1, 1.0],
@@ -98,7 +94,7 @@ let g_wall_2 = new ModelObject({
     position: v3.create(0, 5, -5),
     rotation: v3.create(glMatrix.toRadian(90), 0, 0),
     textures_src: [
-        [24, 180, 24, 255]
+        [54, 218, 100, 255]
     ],
     material: {
         flux: [0.1, 0.9, 0.1, 1.0],
@@ -129,9 +125,9 @@ let directional_light = new DirectionalLightObject({
 /* Set up a point light */
 let point_light = new PointLightObject({
     name: "MyLittlePointLight",
-    position: v3.create(1, 2.5, 1),
+    position: v3.create(-4, 1, 4),
     color: [0.9, 0.9, 0.1, 1],
-    power: 1.0,
+    power: 0.6,
     exp: 0.6
 })
 /**/
@@ -168,22 +164,22 @@ document.addEventListener("keydown", function (event) {
 
     // Light position control
     if (event.keyCode == 65) {
-        point_light.translate([0.1, 0, 0])
+        camera.translate([0.1, 0, 0])
         //console.log("Left")
     } else if (event.keyCode == 87) {
-        point_light.translate([0, 0, 0.1])
+        camera.translate([0, 0, 0.1])
         //console.log("Up")
     } else if (event.keyCode == 68) {
-        point_light.translate([-0.1, 0, 0])
+        camera.translate([-0.1, 0, 0])
         //console.log("Right")
     } else if (event.keyCode == 83) {
-        point_light.translate([0, 0, -0.1])
+        camera.translate([0, 0, -0.1])
         //console.log("Up")
     } else if (event.keyCode == 33) {
-        point_light.translate([0, 0.1, 0])
+        camera.translate([0, 0.1, 0])
         //console.log("Up")
     } else if (event.keyCode == 34) {
-        point_light.translate([0, -0.1, 0])
+        camera.translate([0, -0.1, 0])
     }
 
     // Camera rotation control
@@ -256,7 +252,7 @@ class TestState extends BasicState {
 
     update(dt) {
         obj2.rotate([dt, 0, 0])
-        spot_light.rotate([0, dt / 6, 0])
+        //spot_light.rotate([0, dt / 6, 0])
         directional_light.rotate([0, -dt / 4, 0])
 
         if (canMove) {
@@ -270,11 +266,11 @@ class TestState extends BasicState {
 }
 
 const main_renderer = new Renderer()
-let my_scene = new Scene()
+let my_scene = new BasicScene()
 let state = new TestState(my_scene, main_renderer)
 
 function init() {
-    my_scene.setCurrentState(state)
+    my_scene.enterNewState(state)
 
     my_scene.init()
 

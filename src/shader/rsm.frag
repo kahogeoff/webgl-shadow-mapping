@@ -21,5 +21,6 @@ void main(){
         normalTex = vec4(vec3(v_normal.xyz), 1.0);
         fluxTex = vec4(vec3(color.xyz), 1.0);
     }
-    worldPosTex = vec4(vec3(v_worldPosition.xyz), 1.0);
+    //worldPosTex = vec4(vec3(v_worldPosition.xyz), 1.0);
+    worldPosTex = vec4(normalize(vec3(v_worldPosition.xyz)), 1.0);
 }
