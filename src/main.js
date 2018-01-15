@@ -247,13 +247,13 @@ class TestState extends BasicState {
         super.start()
 
         directional_light.rotation = v3.create(-0.6, -1.2, 0)
-        spot_light.rotation = v3.create(glMatrix.toRadian(0), -1.2, 0)
+        spot_light.rotation = v3.create(glMatrix.toRadian(0), glMatrix.toRadian(180), 0)
     }
 
     update(dt) {
         obj2.rotate([dt, 0, 0])
-        //spot_light.rotate([0, dt / 6, 0])
-        directional_light.rotate([0, -dt / 4, 0])
+        //spot_light.rotate([0, dt / 2, 0])
+        directional_light.rotate([0, -dt / 6, 0])
 
         if (canMove) {
             //camera.rotate([-cameraMoveDirection[1]* dt, -cameraMoveDirection[0]* dt, 0])
