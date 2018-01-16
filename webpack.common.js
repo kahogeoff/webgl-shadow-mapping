@@ -21,10 +21,6 @@ module.exports = {
     module: {
         rules: [
             {
-                test: /\.coffee$/,
-                use: ["coffee-loader"]
-            },
-            {
                 test: /\.(glsl|frag|vert)$/,
                 use: ["raw-loader", "glslify-loader"],
                 exclude: /node_modules/
